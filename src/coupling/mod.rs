@@ -36,7 +36,7 @@
 
 use serde::{Deserialize, Serialize};
 use crate::stats::float_cmp;
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 
 // Submodules
 pub mod archive;
@@ -72,8 +72,8 @@ pub struct BasinizedSystem<const DIM: usize> {
     /// Time step
     pub dt: f64,
 
-    /// History of states (for trajectory analysis)
-    history: Vec<[f64; DIM]>,
+    /// History of states (for trajectory analysis) - VecDeque for O(1) rotation
+    history: VecDeque<[f64; DIM]>,
 
     /// Maximum history length
     max_history: usize,
@@ -118,7 +118,7 @@ impl<const DIM: usize> BasinizedSystem<DIM> {
             flow_params,
             noise,
             dt,
-            history: Vec::with_capacity(1000),
+            history: VecDeque::with_capacity(1000),
             max_history: 1000,
         }
     }
@@ -127,7 +127,7 @@ impl<const DIM: usize> BasinizedSystem<DIM> {
     pub fn set_state(&mut self, state: [f64; DIM]) {
         self.state = state;
         self.history.clear();
-        self.history.push(state);
+        self.history.push_back(state);
     }
 
     /// One step of the flow Φ: x_{t+1} = Φ(x_t) + noise
@@ -169,11 +169,11 @@ impl<const DIM: usize> BasinizedSystem<DIM> {
             self.state[d] += force[d] * self.dt + noise_term;
         }
 
-        // Record history
+        // Record history (O(1) rotation using VecDeque)
         if self.history.len() >= self.max_history {
-            self.history.remove(0);
+            self.history.pop_front();
         }
-        self.history.push(self.state);
+        self.history.push_back(self.state);
     }
 
     /// Run many steps
@@ -207,9 +207,9 @@ impl<const DIM: usize> BasinizedSystem<DIM> {
         }
     }
 
-    /// Get trajectory for analysis
-    pub fn trajectory(&self) -> &[[f64; DIM]] {
-        &self.history
+    /// Get trajectory for analysis (allocates a Vec from internal VecDeque)
+    pub fn trajectory(&self) -> Vec<[f64; DIM]> {
+        self.history.iter().copied().collect()
     }
 
     /// Modify flow parameters (for coupling)
@@ -1066,11 +1066,11 @@ pub struct ObservationStreamAdapter {
     /// Normalization for latency (typical range)
     latency_scale: f64,
 
-    /// History of macro states
-    macro_history: Vec<[f64; 2]>,
+    /// History of macro states - VecDeque for O(1) rotation
+    macro_history: VecDeque<[f64; 2]>,
 
-    /// History of micro states
-    micro_history: Vec<[f64; 2]>,
+    /// History of micro states - VecDeque for O(1) rotation
+    micro_history: VecDeque<[f64; 2]>,
 
     /// Max history length
     max_history: usize,
@@ -1082,8 +1082,8 @@ impl ObservationStreamAdapter {
             macro_state: [0.0, 0.0],
             micro_state: [0.0, 0.0],
             latency_scale: 1000.0, // 1 second = 1.0
-            macro_history: Vec::with_capacity(1000),
-            micro_history: Vec::with_capacity(1000),
+            macro_history: VecDeque::with_capacity(1000),
+            micro_history: VecDeque::with_capacity(1000),
             max_history: 1000,
         }
     }
@@ -1111,13 +1111,13 @@ impl ObservationStreamAdapter {
 
         self.micro_state = [animacy, latency.clamp(0.0, 2.0)];
 
-        // Record history
+        // Record history (O(1) rotation using VecDeque)
         if self.macro_history.len() >= self.max_history {
-            self.macro_history.remove(0);
-            self.micro_history.remove(0);
+            self.macro_history.pop_front();
+            self.micro_history.pop_front();
         }
-        self.macro_history.push(self.macro_state);
-        self.micro_history.push(self.micro_state);
+        self.macro_history.push_back(self.macro_state);
+        self.micro_history.push_back(self.micro_state);
     }
 
     /// Get current macro state
@@ -1130,14 +1130,14 @@ impl ObservationStreamAdapter {
         self.micro_state
     }
 
-    /// Get macro history
-    pub fn macro_history(&self) -> &[[f64; 2]] {
-        &self.macro_history
+    /// Get macro history (allocates a Vec from the internal VecDeque)
+    pub fn macro_history(&self) -> Vec<[f64; 2]> {
+        self.macro_history.iter().copied().collect()
     }
 
-    /// Get micro history
-    pub fn micro_history(&self) -> &[[f64; 2]] {
-        &self.micro_history
+    /// Get micro history (allocates a Vec from the internal VecDeque)
+    pub fn micro_history(&self) -> Vec<[f64; 2]> {
+        self.micro_history.iter().copied().collect()
     }
 
     /// Check if we have enough data for analysis
@@ -1314,21 +1314,25 @@ impl RealDataExperiment {
         let macro_curvature = self.fisher_macro.scalar_curvature();
         let micro_curvature = self.fisher_micro.scalar_curvature();
 
+        // Cache history to avoid multiple allocations
+        let macro_hist = self.adapter.macro_history();
+        let micro_hist = self.adapter.micro_history();
+
         let macro_metric = BasinMetric {
             fisher_curvature: macro_curvature,
             eigenvalues: self.fisher_macro.eigenvalue_spectrum(),
-            basins_visited: self.count_basin_visits(self.adapter.macro_history()),
-            mean_return_time: self.compute_return_time(self.adapter.macro_history()),
-            stability_index: self.compute_stability(self.adapter.macro_history()),
+            basins_visited: self.count_basin_visits(&macro_hist),
+            mean_return_time: self.compute_return_time(&macro_hist),
+            stability_index: self.compute_stability(&macro_hist),
             n_samples: self.fisher_macro.n_samples,
         };
 
         let micro_metric = BasinMetric {
             fisher_curvature: micro_curvature,
             eigenvalues: self.fisher_micro.eigenvalue_spectrum(),
-            basins_visited: self.count_basin_visits(self.adapter.micro_history()),
-            mean_return_time: self.compute_return_time(self.adapter.micro_history()),
-            stability_index: self.compute_stability(self.adapter.micro_history()),
+            basins_visited: self.count_basin_visits(&micro_hist),
+            mean_return_time: self.compute_return_time(&micro_hist),
+            stability_index: self.compute_stability(&micro_hist),
             n_samples: self.fisher_micro.n_samples,
         };
 

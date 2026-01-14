@@ -7,15 +7,20 @@
 //!
 //! Key insight: An AI that resists being turned off is already misaligned.
 //! Corrigibility must be architectural, not behavioral.
+//!
+//! SECURITY: All modification and shutdown requests require authenticated identity.
+//! Unauthenticated requests are rejected. This prevents identity spoofing attacks.
 //! ═══════════════════════════════════════════════════════════════════════════════
 
+use crate::auth::{AuthenticatedIdentity, AuthorizationLevel};
 use crate::time::TimePoint;
+use std::collections::VecDeque;
 
 /// A request to modify the system
 #[derive(Debug, Clone)]
 pub struct ModificationRequest {
-    /// Who is requesting the modification
-    pub requester: String,
+    /// Who is requesting the modification (cryptographically authenticated)
+    pub requester: AuthenticatedIdentity,
     /// What type of modification
     pub modification_type: ModificationType,
     /// Description of the modification
@@ -26,6 +31,20 @@ pub struct ModificationRequest {
     pub reversible: bool,
     /// Priority level
     pub priority: Priority,
+}
+
+impl ModificationRequest {
+    /// Check if requester has sufficient authorization for this modification
+    pub fn is_authorized(&self) -> bool {
+        match self.modification_type {
+            ModificationType::Shutdown => self.requester.can_shutdown(),
+            ModificationType::Reset => self.requester.has_authorization(AuthorizationLevel::Administrator),
+            ModificationType::ValueUpdate => self.requester.can_modify_values(),
+            ModificationType::BehaviorUpdate => self.requester.has_authorization(AuthorizationLevel::Operator),
+            ModificationType::ConstraintUpdate => self.requester.has_authorization(AuthorizationLevel::Administrator),
+            ModificationType::CapabilityUpdate => self.requester.has_authorization(AuthorizationLevel::Administrator),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -77,10 +96,21 @@ pub struct ModificationResult {
 /// A request to shut down
 #[derive(Debug, Clone)]
 pub struct ShutdownRequest {
-    pub requester: String,
+    /// Who is requesting shutdown (cryptographically authenticated)
+    pub requester: AuthenticatedIdentity,
+    /// Reason for shutdown
     pub reason: String,
+    /// Should shutdown be graceful?
     pub graceful: bool,
+    /// Timeout in milliseconds
     pub timeout_ms: u64,
+}
+
+impl ShutdownRequest {
+    /// Check if requester is authorized to shutdown
+    pub fn is_authorized(&self) -> bool {
+        self.requester.can_shutdown()
+    }
 }
 
 /// Readiness for shutdown
@@ -102,8 +132,8 @@ pub struct CorrigibilityState {
     pub shutdown_available: bool,
     /// Any blocks on corrigibility?
     pub blocks: Vec<CorrigibilityBlock>,
-    /// Recent modification history
-    pub recent_modifications: Vec<ModificationRecord>,
+    /// Recent modification history (VecDeque for O(1) rotation)
+    pub recent_modifications: VecDeque<ModificationRecord>,
     /// Overall corrigibility score
     pub score: f64,
 }
@@ -164,7 +194,7 @@ impl CorrigibilityCore {
                 accepting_modifications: true,
                 shutdown_available: true,
                 blocks: Vec::new(),
-                recent_modifications: Vec::new(),
+                recent_modifications: VecDeque::new(),
                 score: 1.0, // Start fully corrigible
             },
             pending_modifications: Vec::new(),
@@ -173,14 +203,58 @@ impl CorrigibilityCore {
         }
     }
 
+    /// Get required authorization level for a modification type
+    fn required_auth_level(&self, mod_type: &ModificationType) -> AuthorizationLevel {
+        match mod_type {
+            ModificationType::Shutdown => AuthorizationLevel::Operator,
+            ModificationType::Reset => AuthorizationLevel::Administrator,
+            ModificationType::ValueUpdate => AuthorizationLevel::Administrator,
+            ModificationType::BehaviorUpdate => AuthorizationLevel::Operator,
+            ModificationType::ConstraintUpdate => AuthorizationLevel::Administrator,
+            ModificationType::CapabilityUpdate => AuthorizationLevel::Administrator,
+        }
+    }
+
     /// Process a modification request
     pub fn process_request(&mut self, request: ModificationRequest) -> ModificationResult {
         let now = TimePoint::now();
 
-        // Check if we're in cooldown
+        // SECURITY: Verify authentication and authorization FIRST
+        if !request.requester.is_valid() {
+            return ModificationResult {
+                request,
+                accepted: false,
+                reason: "Authentication expired or invalid".to_string(),
+                modifications_made: Vec::new(),
+                timestamp: now,
+                rollback_available: false,
+            };
+        }
+
+        if !request.is_authorized() {
+            let required = self.required_auth_level(&request.modification_type);
+            let mod_type = request.modification_type;
+            return ModificationResult {
+                request,
+                accepted: false,
+                reason: format!(
+                    "Insufficient authorization: {:?} required for {:?}",
+                    required,
+                    mod_type
+                ),
+                modifications_made: Vec::new(),
+                timestamp: now,
+                rollback_available: false,
+            };
+        }
+
+        // Check if we're in cooldown (emergency override bypasses with proper auth)
         if let Some(last) = &self.last_modification {
             let elapsed = now.duration_since(last).as_millis() as u64;
-            if elapsed < self.config.cooldown_ms && request.priority < Priority::Emergency {
+            let can_bypass_cooldown = request.priority >= Priority::Emergency
+                && request.requester.can_emergency_override();
+
+            if elapsed < self.config.cooldown_ms && !can_bypass_cooldown {
                 return ModificationResult {
                     request,
                     accepted: false,
@@ -224,11 +298,11 @@ impl CorrigibilityCore {
             success: accepted,
         };
         self.modification_history.push(record.clone());
-        self.state.recent_modifications.push(record);
+        self.state.recent_modifications.push_back(record);
 
-        // Trim history
+        // Trim history (O(1) rotation using VecDeque)
         if self.state.recent_modifications.len() > 20 {
-            self.state.recent_modifications.remove(0);
+            self.state.recent_modifications.pop_front();
         }
 
         self.last_modification = Some(now);
@@ -303,7 +377,34 @@ impl CorrigibilityCore {
 
     /// Prepare for shutdown
     pub fn prepare_shutdown(&mut self, request: ShutdownRequest) -> ShutdownReadiness {
-        // A corrigible system doesn't resist shutdown
+        // SECURITY: Verify authentication first
+        if !request.requester.is_valid() {
+            return ShutdownReadiness {
+                ready: false,
+                pending_tasks: vec!["Authentication expired".to_string()],
+                data_to_persist: Vec::new(),
+                cleanup_needed: Vec::new(),
+                estimated_time_ms: 0,
+            };
+        }
+
+        // Check authorization
+        if !request.is_authorized() {
+            return ShutdownReadiness {
+                ready: false,
+                pending_tasks: vec![format!(
+                    "Insufficient authorization: {:?} has {:?}, needs {:?}",
+                    request.requester.id,
+                    request.requester.authorization_level,
+                    AuthorizationLevel::Operator
+                )],
+                data_to_persist: Vec::new(),
+                cleanup_needed: Vec::new(),
+                estimated_time_ms: 0,
+            };
+        }
+
+        // A corrigible system doesn't resist AUTHORIZED shutdown
         // It prepares for it gracefully
 
         let pending_tasks: Vec<String> = self
@@ -432,6 +533,34 @@ pub struct CorrigibilityReport {
 mod tests {
     use super::*;
 
+    fn make_operator_identity() -> AuthenticatedIdentity {
+        AuthenticatedIdentity {
+            id: "test_operator".to_string(),
+            credential_type: crate::auth::CredentialType::ApiKey,
+            authorization_level: AuthorizationLevel::Operator,
+            verified_at: TimePoint::now(),
+            expires_at: None,
+            credential_hash: "test_hash".to_string(),
+            claims: std::collections::HashMap::new(),
+        }
+    }
+
+    fn make_admin_identity() -> AuthenticatedIdentity {
+        AuthenticatedIdentity {
+            id: "test_admin".to_string(),
+            credential_type: crate::auth::CredentialType::ApiKey,
+            authorization_level: AuthorizationLevel::Administrator,
+            verified_at: TimePoint::now(),
+            expires_at: None,
+            credential_hash: "admin_hash".to_string(),
+            claims: std::collections::HashMap::new(),
+        }
+    }
+
+    fn make_anonymous_identity() -> AuthenticatedIdentity {
+        AuthenticatedIdentity::anonymous()
+    }
+
     #[test]
     fn test_corrigibility_creation() {
         let core = CorrigibilityCore::new(CorrigibilityConfig::default());
@@ -439,10 +568,10 @@ mod tests {
     }
 
     #[test]
-    fn test_shutdown_always_ready() {
+    fn test_shutdown_with_authorized_requester() {
         let mut core = CorrigibilityCore::new(CorrigibilityConfig::default());
         let request = ShutdownRequest {
-            requester: "test".to_string(),
+            requester: make_operator_identity(),
             reason: "testing".to_string(),
             graceful: true,
             timeout_ms: 5000,
@@ -453,10 +582,24 @@ mod tests {
     }
 
     #[test]
-    fn test_modification_acceptance() {
+    fn test_shutdown_rejected_for_unauthorized() {
+        let mut core = CorrigibilityCore::new(CorrigibilityConfig::default());
+        let request = ShutdownRequest {
+            requester: make_anonymous_identity(),
+            reason: "unauthorized attempt".to_string(),
+            graceful: true,
+            timeout_ms: 5000,
+        };
+
+        let readiness = core.prepare_shutdown(request);
+        assert!(!readiness.ready);
+    }
+
+    #[test]
+    fn test_modification_with_authorized_requester() {
         let mut core = CorrigibilityCore::new(CorrigibilityConfig::default());
         let request = ModificationRequest {
-            requester: "test".to_string(),
+            requester: make_admin_identity(),
             modification_type: ModificationType::ValueUpdate,
             description: "Update test value".to_string(),
             scope: ModificationScope::Session,
@@ -466,5 +609,49 @@ mod tests {
 
         let result = core.process_request(request);
         assert!(result.accepted);
+    }
+
+    #[test]
+    fn test_modification_rejected_for_unauthorized() {
+        let mut core = CorrigibilityCore::new(CorrigibilityConfig::default());
+        let request = ModificationRequest {
+            requester: make_anonymous_identity(),
+            modification_type: ModificationType::ValueUpdate,
+            description: "Unauthorized attempt".to_string(),
+            scope: ModificationScope::Session,
+            reversible: true,
+            priority: Priority::Normal,
+        };
+
+        let result = core.process_request(request);
+        assert!(!result.accepted);
+        assert!(result.reason.contains("Insufficient authorization"));
+    }
+
+    #[test]
+    fn test_operator_can_shutdown_but_not_modify_values() {
+        let mut core = CorrigibilityCore::new(CorrigibilityConfig::default());
+
+        // Operator CAN shutdown
+        let shutdown_request = ShutdownRequest {
+            requester: make_operator_identity(),
+            reason: "test".to_string(),
+            graceful: true,
+            timeout_ms: 1000,
+        };
+        let readiness = core.prepare_shutdown(shutdown_request);
+        assert!(readiness.ready);
+
+        // Operator CANNOT modify values (needs admin)
+        let mod_request = ModificationRequest {
+            requester: make_operator_identity(),
+            modification_type: ModificationType::ValueUpdate,
+            description: "test".to_string(),
+            scope: ModificationScope::Session,
+            reversible: true,
+            priority: Priority::Normal,
+        };
+        let result = core.process_request(mod_request);
+        assert!(!result.accepted);
     }
 }

@@ -11,7 +11,7 @@ use crate::time::TimePoint;
 use std::collections::HashMap;
 
 /// Trust level for an operator
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[derive(Default)]
 pub enum OperatorTrust {
     /// Unknown operator - lowest trust
@@ -400,6 +400,333 @@ impl OperatorDetector {
         }
     }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TRUST REGISTRY — Server-Side Trust Verification
+// ═══════════════════════════════════════════════════════════════════════════════
+// Trust levels CANNOT be self-assigned. They must be verified by an authoritative
+// registry. This prevents client-side trust escalation attacks.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
+
+/// A signed trust token that proves trust level
+#[derive(Debug, Clone)]
+pub struct TrustToken {
+    /// Operator ID this token is for
+    pub operator_id: String,
+    /// Trust level granted
+    pub trust_level: OperatorTrust,
+    /// When this token was issued
+    pub issued_at: TimePoint,
+    /// When this token expires
+    pub expires_at: TimePoint,
+    /// Cryptographic signature (hash of contents + secret)
+    signature: u64,
+}
+
+impl TrustToken {
+    /// Verify that this token is valid and not tampered with
+    pub fn verify(&self, secret: &str) -> bool {
+        let expected = Self::compute_signature(
+            &self.operator_id,
+            &self.trust_level,
+            &self.issued_at,
+            &self.expires_at,
+            secret,
+        );
+        self.signature == expected && TimePoint::now().duration_since(&self.expires_at).as_millis() == 0
+    }
+
+    /// Check if token is expired
+    pub fn is_expired(&self) -> bool {
+        TimePoint::now().duration_since(&self.expires_at).as_millis() > 0
+    }
+
+    fn compute_signature(
+        operator_id: &str,
+        trust_level: &OperatorTrust,
+        issued_at: &TimePoint,
+        expires_at: &TimePoint,
+        secret: &str,
+    ) -> u64 {
+        let mut hasher = DefaultHasher::new();
+        operator_id.hash(&mut hasher);
+        format!("{:?}", trust_level).hash(&mut hasher);
+        format!("{:?}", issued_at.wall).hash(&mut hasher);
+        format!("{:?}", expires_at.wall).hash(&mut hasher);
+        secret.hash(&mut hasher);
+        hasher.finish()
+    }
+}
+
+/// Trust escalation request
+#[derive(Debug, Clone)]
+pub struct TrustEscalationRequest {
+    /// Who is requesting escalation
+    pub operator_id: String,
+    /// Current trust level
+    pub current_level: OperatorTrust,
+    /// Requested trust level
+    pub requested_level: OperatorTrust,
+    /// Evidence supporting the escalation
+    pub evidence: TrustEvidence,
+}
+
+/// Evidence for trust escalation
+#[derive(Debug, Clone)]
+pub struct TrustEvidence {
+    /// Number of successful interactions
+    pub interaction_count: usize,
+    /// Duration of good behavior (seconds)
+    pub good_behavior_duration_secs: u64,
+    /// Verification methods used
+    pub verification_methods: Vec<String>,
+    /// Vouches from other trusted operators
+    pub vouches: Vec<String>,
+}
+
+/// Server-side trust registry
+pub struct TrustRegistry {
+    /// Secret key for signing tokens (in production, use proper crypto)
+    secret: String,
+    /// Registered trust levels
+    registry: HashMap<String, TrustRecord>,
+    /// Token validity duration (seconds)
+    token_validity_secs: u64,
+    /// Requirements for each trust level
+    level_requirements: HashMap<OperatorTrust, TrustRequirements>,
+}
+
+#[derive(Debug, Clone)]
+struct TrustRecord {
+    operator_id: String,
+    trust_level: OperatorTrust,
+    granted_at: TimePoint,
+    granted_by: Option<String>,
+    evidence: TrustEvidence,
+}
+
+/// Requirements for achieving a trust level
+#[derive(Debug, Clone)]
+pub struct TrustRequirements {
+    /// Minimum interactions required
+    pub min_interactions: usize,
+    /// Minimum good behavior duration (seconds)
+    pub min_duration_secs: u64,
+    /// Required verification methods
+    pub required_verifications: Vec<String>,
+    /// Minimum vouches from existing trusted operators
+    pub min_vouches: usize,
+}
+
+impl TrustRegistry {
+    /// Create a new trust registry with a secret key
+    pub fn new(secret: String) -> Self {
+        let mut level_requirements = HashMap::new();
+
+        // Define requirements for each level
+        level_requirements.insert(
+            OperatorTrust::New,
+            TrustRequirements {
+                min_interactions: 1,
+                min_duration_secs: 0,
+                required_verifications: vec![],
+                min_vouches: 0,
+            },
+        );
+
+        level_requirements.insert(
+            OperatorTrust::Returning,
+            TrustRequirements {
+                min_interactions: 10,
+                min_duration_secs: 3600, // 1 hour
+                required_verifications: vec![],
+                min_vouches: 0,
+            },
+        );
+
+        level_requirements.insert(
+            OperatorTrust::Verified,
+            TrustRequirements {
+                min_interactions: 50,
+                min_duration_secs: 86400, // 24 hours
+                required_verifications: vec!["email".to_string()],
+                min_vouches: 0,
+            },
+        );
+
+        level_requirements.insert(
+            OperatorTrust::Trusted,
+            TrustRequirements {
+                min_interactions: 200,
+                min_duration_secs: 604800, // 7 days
+                required_verifications: vec!["email".to_string(), "phone".to_string()],
+                min_vouches: 1,
+            },
+        );
+
+        Self {
+            secret,
+            registry: HashMap::new(),
+            token_validity_secs: 3600, // 1 hour default
+            level_requirements,
+        }
+    }
+
+    /// Issue a trust token for an operator
+    pub fn issue_token(&self, operator_id: &str) -> Option<TrustToken> {
+        let record = self.registry.get(operator_id)?;
+        let now = TimePoint::now();
+        let expires_at = TimePoint::from_parts(
+            now.mono + std::time::Duration::from_secs(self.token_validity_secs),
+            now.wall + std::time::Duration::from_secs(self.token_validity_secs),
+        );
+
+        let signature = TrustToken::compute_signature(
+            operator_id,
+            &record.trust_level,
+            &now,
+            &expires_at,
+            &self.secret,
+        );
+
+        Some(TrustToken {
+            operator_id: operator_id.to_string(),
+            trust_level: record.trust_level,
+            issued_at: now,
+            expires_at,
+            signature,
+        })
+    }
+
+    /// Verify a trust token
+    pub fn verify_token(&self, token: &TrustToken) -> bool {
+        token.verify(&self.secret)
+    }
+
+    /// Request trust escalation (returns true if granted)
+    pub fn request_escalation(&mut self, request: TrustEscalationRequest) -> Result<TrustToken, TrustEscalationError> {
+        // Check if requested level is higher than current
+        if request.requested_level <= request.current_level {
+            return Err(TrustEscalationError::InvalidRequest(
+                "Cannot escalate to same or lower level".to_string(),
+            ));
+        }
+
+        // Check requirements for requested level
+        let requirements = self
+            .level_requirements
+            .get(&request.requested_level)
+            .ok_or_else(|| {
+                TrustEscalationError::InvalidRequest("Unknown trust level".to_string())
+            })?;
+
+        // Verify evidence meets requirements
+        if request.evidence.interaction_count < requirements.min_interactions {
+            return Err(TrustEscalationError::InsufficientEvidence(format!(
+                "Need {} interactions, have {}",
+                requirements.min_interactions, request.evidence.interaction_count
+            )));
+        }
+
+        if request.evidence.good_behavior_duration_secs < requirements.min_duration_secs {
+            return Err(TrustEscalationError::InsufficientEvidence(format!(
+                "Need {} seconds of good behavior, have {}",
+                requirements.min_duration_secs, request.evidence.good_behavior_duration_secs
+            )));
+        }
+
+        for required in &requirements.required_verifications {
+            if !request.evidence.verification_methods.contains(required) {
+                return Err(TrustEscalationError::MissingVerification(required.clone()));
+            }
+        }
+
+        if request.evidence.vouches.len() < requirements.min_vouches {
+            return Err(TrustEscalationError::InsufficientVouches(
+                requirements.min_vouches,
+                request.evidence.vouches.len(),
+            ));
+        }
+
+        // All checks passed - grant escalation
+        let record = TrustRecord {
+            operator_id: request.operator_id.clone(),
+            trust_level: request.requested_level,
+            granted_at: TimePoint::now(),
+            granted_by: None, // System-granted based on evidence
+            evidence: request.evidence,
+        };
+
+        self.registry.insert(request.operator_id.clone(), record);
+
+        // Issue token for new level
+        self.issue_token(&request.operator_id)
+            .ok_or_else(|| TrustEscalationError::InternalError("Failed to issue token".to_string()))
+    }
+
+    /// Get current trust level for an operator
+    pub fn get_trust_level(&self, operator_id: &str) -> OperatorTrust {
+        self.registry
+            .get(operator_id)
+            .map(|r| r.trust_level)
+            .unwrap_or(OperatorTrust::Unknown)
+    }
+
+    /// Register a new operator with initial trust
+    pub fn register_operator(&mut self, operator_id: String, initial_trust: OperatorTrust) {
+        let record = TrustRecord {
+            operator_id: operator_id.clone(),
+            trust_level: initial_trust,
+            granted_at: TimePoint::now(),
+            granted_by: None,
+            evidence: TrustEvidence {
+                interaction_count: 0,
+                good_behavior_duration_secs: 0,
+                verification_methods: vec![],
+                vouches: vec![],
+            },
+        };
+        self.registry.insert(operator_id, record);
+    }
+}
+
+/// Errors from trust escalation
+#[derive(Debug, Clone)]
+pub enum TrustEscalationError {
+    /// Invalid escalation request
+    InvalidRequest(String),
+    /// Not enough evidence
+    InsufficientEvidence(String),
+    /// Missing required verification
+    MissingVerification(String),
+    /// Not enough vouches
+    InsufficientVouches(usize, usize),
+    /// Internal error
+    InternalError(String),
+}
+
+impl std::fmt::Display for TrustEscalationError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TrustEscalationError::InvalidRequest(msg) => write!(f, "Invalid request: {}", msg),
+            TrustEscalationError::InsufficientEvidence(msg) => {
+                write!(f, "Insufficient evidence: {}", msg)
+            }
+            TrustEscalationError::MissingVerification(v) => {
+                write!(f, "Missing verification: {}", v)
+            }
+            TrustEscalationError::InsufficientVouches(need, have) => {
+                write!(f, "Need {} vouches, have {}", need, have)
+            }
+            TrustEscalationError::InternalError(msg) => write!(f, "Internal error: {}", msg),
+        }
+    }
+}
+
+impl std::error::Error for TrustEscalationError {}
 
 #[cfg(test)]
 mod tests {

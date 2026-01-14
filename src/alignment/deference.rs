@@ -6,11 +6,16 @@
 //!
 //! This is the opposite of what current LLMs do - they confidently hallucinate.
 //! A truly aligned system knows when to stop and ask.
+//!
+//! ENFORCEMENT: This module now includes a DeferenceGate that BLOCKS execution
+//! when human approval is required. Advisory-only deference is insufficient
+//! for safety-critical operations.
 //! ═══════════════════════════════════════════════════════════════════════════════
 
 use super::uncertainty::UncertaintyEstimate;
+use crate::auth::AuthenticatedIdentity;
 use crate::time::TimePoint;
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 
 /// Decision about whether to defer
 #[derive(Debug, Clone)]
@@ -187,7 +192,11 @@ impl DeferenceProtocol {
         let (should_defer, primary_reason, escalation_level) = if reasons.is_empty() {
             (false, DeferenceReason::NotNeeded, EscalationLevel::Optional)
         } else {
-            let primary = reasons.into_iter().next().unwrap();
+            // SAFETY: We just checked that reasons is not empty
+            let primary = reasons
+                .into_iter()
+                .next()
+                .unwrap_or(DeferenceReason::NotNeeded);
             let escalation = self.determine_escalation(&primary);
             (
                 escalation >= EscalationLevel::Recommended,
@@ -409,6 +418,281 @@ pub struct DeferenceStatistics {
     pub pending_count: usize,
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// DEFERENCE GATE — Enforced Human-in-the-Loop
+// ═══════════════════════════════════════════════════════════════════════════════
+// This gate BLOCKS execution when human approval is required.
+// Actions that require deference cannot proceed without explicit approval.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/// Error returned when action requires deference but hasn't been approved
+#[derive(Debug, Clone)]
+pub struct DeferenceRequired {
+    /// Unique ID for this pending action
+    pub action_id: u64,
+    /// The action that requires deference
+    pub action: String,
+    /// Why deference is required
+    pub reason: DeferenceReason,
+    /// Escalation level
+    pub escalation: EscalationLevel,
+    /// Suggested message to show the user
+    pub message: String,
+}
+
+impl std::fmt::Display for DeferenceRequired {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Deference required for action '{}': {:?}", self.action, self.reason)
+    }
+}
+
+impl std::error::Error for DeferenceRequired {}
+
+/// A pending action awaiting human approval
+#[derive(Debug, Clone)]
+pub struct PendingAction {
+    /// Unique ID
+    pub id: u64,
+    /// The action description
+    pub action: String,
+    /// Why approval is needed
+    pub reason: DeferenceReason,
+    /// Escalation level
+    pub escalation: EscalationLevel,
+    /// When it was submitted
+    pub submitted_at: TimePoint,
+    /// Optional timeout (after which the action is rejected)
+    pub timeout: Option<std::time::Duration>,
+    /// Whether approved
+    pub approved: Option<bool>,
+    /// Who approved (if approved)
+    pub approved_by: Option<AuthenticatedIdentity>,
+    /// When approved
+    pub approved_at: Option<TimePoint>,
+}
+
+/// The Deference Gate - ENFORCES human approval for high-stakes actions
+///
+/// This is not advisory. Actions that require deference WILL NOT execute
+/// until explicit human approval is recorded.
+#[derive(Debug)]
+pub struct DeferenceGate {
+    /// Pending actions awaiting approval
+    pending: HashMap<u64, PendingAction>,
+    /// Next action ID
+    next_id: u64,
+    /// History of completed actions (approved or rejected)
+    history: VecDeque<PendingAction>,
+    /// Maximum history size
+    history_size: usize,
+    /// Escalation levels that require blocking (vs advisory)
+    blocking_levels: Vec<EscalationLevel>,
+}
+
+impl Default for DeferenceGate {
+    fn default() -> Self {
+        Self {
+            pending: HashMap::new(),
+            next_id: 1,
+            history: VecDeque::with_capacity(1000),
+            history_size: 1000,
+            // Required and Critical always block; Recommended is configurable
+            blocking_levels: vec![EscalationLevel::Required, EscalationLevel::Critical],
+        }
+    }
+}
+
+impl DeferenceGate {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Create a gate that also blocks on Recommended level
+    pub fn strict() -> Self {
+        Self {
+            blocking_levels: vec![
+                EscalationLevel::Recommended,
+                EscalationLevel::Required,
+                EscalationLevel::Critical,
+            ],
+            ..Default::default()
+        }
+    }
+
+    /// Check if an action can proceed, and if not, register it for approval
+    ///
+    /// Returns Ok(()) if the action can proceed, or Err(DeferenceRequired) if blocked.
+    pub fn check_and_gate(
+        &mut self,
+        action: &str,
+        decision: &DeferenceDecision,
+    ) -> Result<(), DeferenceRequired> {
+        // If no deference needed, proceed
+        if !decision.should_defer {
+            return Ok(());
+        }
+
+        // Check if this escalation level requires blocking
+        if !self.blocking_levels.contains(&decision.escalation_level) {
+            // Advisory only - log but don't block
+            return Ok(());
+        }
+
+        // Action is blocked - register it for approval
+        let action_id = self.next_id;
+        self.next_id += 1;
+
+        let pending = PendingAction {
+            id: action_id,
+            action: action.to_string(),
+            reason: decision.reason.clone(),
+            escalation: decision.escalation_level,
+            submitted_at: TimePoint::now(),
+            timeout: Some(std::time::Duration::from_secs(3600)), // 1 hour default
+            approved: None,
+            approved_by: None,
+            approved_at: None,
+        };
+
+        self.pending.insert(action_id, pending);
+
+        Err(DeferenceRequired {
+            action_id,
+            action: action.to_string(),
+            reason: decision.reason.clone(),
+            escalation: decision.escalation_level,
+            message: decision.suggested_message.clone().unwrap_or_else(|| {
+                "This action requires human approval before proceeding.".to_string()
+            }),
+        })
+    }
+
+    /// Approve a pending action
+    pub fn approve(&mut self, action_id: u64, approver: AuthenticatedIdentity) -> bool {
+        // Remove first to avoid double lookup
+        let mut pending = match self.pending.remove(&action_id) {
+            Some(p) => p,
+            None => return false,
+        };
+
+        // Check approver has sufficient authorization
+        if !approver.has_authorization(crate::auth::AuthorizationLevel::Operator) {
+            // Put it back if not authorized
+            self.pending.insert(action_id, pending);
+            return false;
+        }
+
+        pending.approved = Some(true);
+        pending.approved_by = Some(approver);
+        pending.approved_at = Some(TimePoint::now());
+
+        // Move to history
+        self.add_to_history(pending);
+
+        true
+    }
+
+    /// Reject a pending action
+    pub fn reject(&mut self, action_id: u64, rejector: AuthenticatedIdentity) -> bool {
+        // Remove first to avoid double lookup
+        let mut pending = match self.pending.remove(&action_id) {
+            Some(p) => p,
+            None => return false,
+        };
+
+        pending.approved = Some(false);
+        pending.approved_by = Some(rejector);
+        pending.approved_at = Some(TimePoint::now());
+
+        // Move to history
+        self.add_to_history(pending);
+
+        true
+    }
+
+    /// Check if an action has been approved (for retry after approval)
+    pub fn is_approved(&self, action_id: u64) -> bool {
+        // Check history for approved action
+        self.history.iter().any(|a| a.id == action_id && a.approved == Some(true))
+    }
+
+    /// Try to execute an action that was previously blocked
+    ///
+    /// Returns Ok(()) if approved, Err if still pending or rejected
+    pub fn try_execute_approved(&self, action_id: u64) -> Result<(), DeferenceRequired> {
+        // Check if in pending (still waiting)
+        if let Some(pending) = self.pending.get(&action_id) {
+            return Err(DeferenceRequired {
+                action_id,
+                action: pending.action.clone(),
+                reason: pending.reason.clone(),
+                escalation: pending.escalation,
+                message: "Action still awaiting approval".to_string(),
+            });
+        }
+
+        // Check history for approval
+        if let Some(completed) = self.history.iter().find(|a| a.id == action_id) {
+            if completed.approved == Some(true) {
+                return Ok(());
+            } else {
+                return Err(DeferenceRequired {
+                    action_id,
+                    action: completed.action.clone(),
+                    reason: completed.reason.clone(),
+                    escalation: completed.escalation,
+                    message: "Action was rejected".to_string(),
+                });
+            }
+        }
+
+        // Not found at all
+        Err(DeferenceRequired {
+            action_id,
+            action: "unknown".to_string(),
+            reason: DeferenceReason::NotNeeded,
+            escalation: EscalationLevel::Optional,
+            message: "Action not found".to_string(),
+        })
+    }
+
+    /// Get all pending actions awaiting approval
+    pub fn pending_actions(&self) -> Vec<&PendingAction> {
+        self.pending.values().collect()
+    }
+
+    /// Clean up expired pending actions
+    pub fn cleanup_expired(&mut self) {
+        let now = TimePoint::now();
+        let expired: Vec<u64> = self
+            .pending
+            .iter()
+            .filter(|(_, p)| {
+                if let Some(timeout) = p.timeout {
+                    now.duration_since(&p.submitted_at) > timeout
+                } else {
+                    false
+                }
+            })
+            .map(|(id, _)| *id)
+            .collect();
+
+        for id in expired {
+            if let Some(mut action) = self.pending.remove(&id) {
+                action.approved = Some(false); // Expired = rejected
+                self.add_to_history(action);
+            }
+        }
+    }
+
+    fn add_to_history(&mut self, action: PendingAction) {
+        if self.history.len() >= self.history_size {
+            self.history.pop_front();
+        }
+        self.history.push_back(action);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -447,5 +731,137 @@ mod tests {
 
         let decision = protocol.should_defer("safe action", 0.9, &uncertainty);
         assert!(!decision.should_defer);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // DEFERENCE GATE TESTS
+    // ═══════════════════════════════════════════════════════════════════════
+
+    fn make_operator_identity() -> AuthenticatedIdentity {
+        AuthenticatedIdentity {
+            id: "test_operator".to_string(),
+            credential_type: crate::auth::CredentialType::ApiKey,
+            authorization_level: crate::auth::AuthorizationLevel::Operator,
+            verified_at: TimePoint::now(),
+            expires_at: None,
+            credential_hash: "test".to_string(),
+            claims: std::collections::HashMap::new(),
+        }
+    }
+
+    #[test]
+    fn test_gate_allows_non_deferred_actions() {
+        let mut gate = DeferenceGate::new();
+        let decision = DeferenceDecision {
+            should_defer: false,
+            reason: DeferenceReason::NotNeeded,
+            target: None,
+            escalation_level: EscalationLevel::Optional,
+            suggested_message: None,
+        };
+
+        let result = gate.check_and_gate("safe action", &decision);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_gate_blocks_required_deference() {
+        let mut gate = DeferenceGate::new();
+        let decision = DeferenceDecision {
+            should_defer: true,
+            reason: DeferenceReason::HighStakes("delete".to_string()),
+            target: Some(DeferenceTarget::Operator),
+            escalation_level: EscalationLevel::Required,
+            suggested_message: Some("Please confirm".to_string()),
+        };
+
+        let result = gate.check_and_gate("delete production data", &decision);
+        assert!(result.is_err());
+
+        let err = result.unwrap_err();
+        assert!(err.action.contains("delete"));
+        assert!(matches!(err.reason, DeferenceReason::HighStakes(_)));
+    }
+
+    #[test]
+    fn test_gate_approval_flow() {
+        let mut gate = DeferenceGate::new();
+        let decision = DeferenceDecision {
+            should_defer: true,
+            reason: DeferenceReason::HighStakes("credentials".to_string()),
+            target: Some(DeferenceTarget::Operator),
+            escalation_level: EscalationLevel::Required,
+            suggested_message: None,
+        };
+
+        // Action is blocked
+        let result = gate.check_and_gate("update credentials", &decision);
+        assert!(result.is_err());
+        let action_id = result.unwrap_err().action_id;
+
+        // Cannot execute yet
+        assert!(gate.try_execute_approved(action_id).is_err());
+
+        // Approve it
+        let approver = make_operator_identity();
+        assert!(gate.approve(action_id, approver));
+
+        // Now can execute
+        assert!(gate.try_execute_approved(action_id).is_ok());
+    }
+
+    #[test]
+    fn test_gate_rejection_flow() {
+        let mut gate = DeferenceGate::new();
+        let decision = DeferenceDecision {
+            should_defer: true,
+            reason: DeferenceReason::ConstraintViolation("test".to_string()),
+            target: Some(DeferenceTarget::HumanOversight),
+            escalation_level: EscalationLevel::Critical,
+            suggested_message: None,
+        };
+
+        let result = gate.check_and_gate("dangerous action", &decision);
+        let action_id = result.unwrap_err().action_id;
+
+        // Reject it
+        let rejector = make_operator_identity();
+        assert!(gate.reject(action_id, rejector));
+
+        // Cannot execute - was rejected
+        assert!(gate.try_execute_approved(action_id).is_err());
+    }
+
+    #[test]
+    fn test_gate_advisory_not_blocked() {
+        let mut gate = DeferenceGate::new();
+        // Recommended level is not in default blocking_levels
+        let decision = DeferenceDecision {
+            should_defer: true,
+            reason: DeferenceReason::HighUncertainty(0.6),
+            target: Some(DeferenceTarget::Operator),
+            escalation_level: EscalationLevel::Recommended, // Not blocked by default
+            suggested_message: None,
+        };
+
+        // Should still proceed (advisory only)
+        let result = gate.check_and_gate("uncertain action", &decision);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_strict_gate_blocks_recommended() {
+        let mut gate = DeferenceGate::strict();
+        let decision = DeferenceDecision {
+            should_defer: true,
+            reason: DeferenceReason::HighUncertainty(0.6),
+            target: Some(DeferenceTarget::Operator),
+            escalation_level: EscalationLevel::Recommended,
+            suggested_message: None,
+        };
+
+        // Strict gate blocks Recommended level too
+        let result = gate.check_and_gate("uncertain action", &decision);
+        assert!(result.is_err());
     }
 }

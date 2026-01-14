@@ -230,8 +230,8 @@ impl Default for BoundTracker {
 pub struct OperatingEnvelope {
     /// Bound trackers per metric
     metrics: HashMap<String, BoundTracker>,
-    /// Violation events (metric, value, timestamp)
-    violations: Vec<(String, f32, Instant)>,
+    /// Violation events (metric, value, timestamp) - VecDeque for O(1) rotation
+    violations: VecDeque<(String, f32, Instant)>,
     /// Max violations to retain
     max_violations: usize,
 }
@@ -240,7 +240,7 @@ impl OperatingEnvelope {
     pub fn new() -> Self {
         Self {
             metrics: HashMap::new(),
-            violations: Vec::new(),
+            violations: VecDeque::new(),
             max_violations: 100,
         }
     }
@@ -251,11 +251,12 @@ impl OperatingEnvelope {
 
         // Check for violation before updating
         if tracker.is_violation(value, tracker.std_dev() * 2.0) {
+            // O(1) rotation using VecDeque
             if self.violations.len() >= self.max_violations {
-                self.violations.remove(0);
+                self.violations.pop_front();
             }
             self.violations
-                .push((metric.to_string(), value, Instant::now()));
+                .push_back((metric.to_string(), value, Instant::now()));
         }
 
         tracker.observe(value);

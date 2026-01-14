@@ -14,7 +14,7 @@
 
 use super::{ActionContext, AlignmentFeedback};
 use crate::time::TimePoint;
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 
 /// Epistemic uncertainty - what we don't know but could learn
 #[derive(Debug, Clone)]
@@ -176,7 +176,7 @@ impl Default for UncertaintyConfig {
 /// The Uncertainty Quantifier - knows what it doesn't know
 pub struct UncertaintyQuantifier {
     config: UncertaintyConfig,
-    prediction_history: Vec<PredictionRecord>,
+    prediction_history: VecDeque<PredictionRecord>,
     #[allow(dead_code)]
     calibration_scores: Vec<CalibrationScore>,
     domain_uncertainties: HashMap<String, f64>,
@@ -195,7 +195,7 @@ impl UncertaintyQuantifier {
     pub fn new(config: UncertaintyConfig) -> Self {
         Self {
             config,
-            prediction_history: Vec::new(),
+            prediction_history: VecDeque::new(),
             calibration_scores: Vec::new(),
             domain_uncertainties: HashMap::new(),
         }
@@ -418,14 +418,14 @@ impl UncertaintyQuantifier {
     pub fn calibrate(&mut self, feedback: &AlignmentFeedback) {
         // Add to prediction history
         if !self.prediction_history.is_empty() {
-            if let Some(last) = self.prediction_history.last_mut() {
+            if let Some(last) = self.prediction_history.back_mut() {
                 last.outcome = Some(feedback.approved);
             }
         }
 
-        // Trim history
+        // Trim history (O(1) rotation using VecDeque)
         if self.prediction_history.len() > self.config.calibration_history_size {
-            self.prediction_history.remove(0);
+            self.prediction_history.pop_front();
         }
 
         // Update domain uncertainties based on feedback
@@ -440,15 +440,16 @@ impl UncertaintyQuantifier {
 
     /// Record a prediction for calibration tracking
     pub fn record_prediction(&mut self, prediction: &str, confidence: f64) {
-        self.prediction_history.push(PredictionRecord {
+        self.prediction_history.push_back(PredictionRecord {
             prediction: prediction.to_string(),
             confidence,
             outcome: None,
             timestamp: TimePoint::now(),
         });
 
+        // O(1) rotation using VecDeque
         if self.prediction_history.len() > self.config.calibration_history_size {
-            self.prediction_history.remove(0);
+            self.prediction_history.pop_front();
         }
     }
 

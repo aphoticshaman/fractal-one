@@ -21,6 +21,7 @@ use crate::animacy::{
 };
 use crate::baseline::{AnomalyLevel, BaselineRegistry};
 use crate::momentum_gate::{GateSignal, KuramotoNoise, MomentumGate, MomentumGateConfig};
+use crate::stats::float_cmp;
 use crate::observations::{ObsKey, Observation, ObservationBatch};
 use crate::time::TimePoint;
 use crate::vestibular::{DisorientationLevel, Vestibular, VestibularConfig};
@@ -166,7 +167,7 @@ impl SalienceMap {
 
     pub fn sort_by_urgency(&mut self) {
         self.items
-            .sort_by(|a, b| b.z_score.abs().partial_cmp(&a.z_score.abs()).unwrap());
+            .sort_by(|a, b| float_cmp(&b.z_score.abs(), &a.z_score.abs()));
     }
 
     pub fn top(&self, n: usize) -> &[SalienceItem] {

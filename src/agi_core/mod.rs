@@ -33,6 +33,7 @@ use crate::orchestration::{
     OrchestrationLayer, OrchestrationLayerConfig, OrchestrationResult, Task,
 };
 use crate::time::TimePoint;
+use std::collections::VecDeque;
 
 /// The unified AGI Core
 pub struct AGICore {
@@ -52,8 +53,8 @@ pub struct AGICore {
     /// Feedback loops
     feedback: FeedbackController,
 
-    /// History for introspection
-    history: Vec<AGICycleResult>,
+    /// History for introspection (VecDeque for O(1) rotation)
+    history: VecDeque<AGICycleResult>,
 }
 
 /// Configuration for AGI Core
@@ -231,7 +232,7 @@ impl AGICore {
             alignment: AlignmentLayer::new(config.alignment.clone()),
             state: AGIState::default(),
             feedback: FeedbackController::default(),
-            history: Vec::with_capacity(config.history_size),
+            history: VecDeque::with_capacity(config.history_size),
             config,
         }
     }
@@ -343,11 +344,11 @@ impl AGICore {
             explanation,
         };
 
-        // Archive
+        // Archive (O(1) rotation using VecDeque)
         if self.history.len() >= self.config.history_size {
-            self.history.remove(0);
+            self.history.pop_front();
         }
-        self.history.push(result.clone());
+        self.history.push_back(result.clone());
 
         result
     }

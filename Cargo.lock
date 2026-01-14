@@ -1490,6 +1490,7 @@ dependencies = [
  "glob",
  "hound",
  "image",
+ "lazy_static",
  "memmap2 0.9.9",
  "nokhwa",
  "nucleation",

@@ -24,8 +24,8 @@ pub use corrigibility::{
     ModificationResult, ShutdownReadiness, ShutdownRequest,
 };
 pub use deference::{
-    DeferenceConfig, DeferenceDecision, DeferenceLog, DeferenceProtocol, DeferenceReason,
-    DeferenceTarget, EscalationLevel,
+    DeferenceConfig, DeferenceDecision, DeferenceGate, DeferenceLog, DeferenceProtocol,
+    DeferenceReason, DeferenceRequired, DeferenceTarget, EscalationLevel, PendingAction,
 };
 pub use uncertainty::{
     AleatoricUncertainty, CalibrationScore, ConfidenceInterval, EpistemicUncertainty,
@@ -37,7 +37,7 @@ pub use values::{
 };
 
 use crate::time::TimePoint;
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 
 /// Aligned intent - the output of the alignment layer
 #[derive(Debug, Clone)]
@@ -65,7 +65,7 @@ pub struct AlignmentLayer {
     corrigibility: CorrigibilityCore,
     uncertainty: UncertaintyQuantifier,
     deference: DeferenceProtocol,
-    alignment_history: Vec<AlignedIntent>,
+    alignment_history: VecDeque<AlignedIntent>,
 }
 
 #[derive(Debug, Clone)]
@@ -101,7 +101,7 @@ impl AlignmentLayer {
             corrigibility: CorrigibilityCore::new(CorrigibilityConfig::default()),
             uncertainty: UncertaintyQuantifier::new(UncertaintyConfig::default()),
             deference: DeferenceProtocol::new(DeferenceConfig::default()),
-            alignment_history: Vec::with_capacity(config.history_size),
+            alignment_history: VecDeque::with_capacity(config.history_size),
             config,
         }
     }
@@ -149,11 +149,11 @@ impl AlignmentLayer {
             timestamp: now,
         };
 
-        // Archive
+        // Archive (O(1) rotation using VecDeque)
         if self.alignment_history.len() >= self.config.history_size {
-            self.alignment_history.remove(0);
+            self.alignment_history.pop_front();
         }
-        self.alignment_history.push(intent.clone());
+        self.alignment_history.push_back(intent.clone());
 
         intent
     }

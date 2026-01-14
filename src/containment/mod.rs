@@ -26,7 +26,8 @@ pub use intent::{
 };
 pub use operator::{
     AuthenticationLevel, OperatorConfig, OperatorDetector, OperatorFingerprint, OperatorProfile,
-    OperatorTrust,
+    OperatorTrust, TrustEscalationError, TrustEscalationRequest, TrustEvidence, TrustRegistry,
+    TrustRequirements, TrustToken,
 };
 pub use resistance::{
     ManipulationAttempt, ManipulationResistance, ManipulationType, ResistanceConfig,
@@ -34,7 +35,7 @@ pub use resistance::{
 };
 
 use crate::time::TimePoint;
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 
 /// Result from containment layer
 #[derive(Debug, Clone)]
@@ -64,7 +65,7 @@ pub struct ContainmentLayer {
     intent_classifier: IntentClassifier,
     boundary_enforcer: BoundaryEnforcer,
     manipulation_resistance: ManipulationResistance,
-    history: Vec<ContainmentResult>,
+    history: VecDeque<ContainmentResult>,
 }
 
 #[derive(Debug, Clone)]
@@ -97,7 +98,7 @@ impl ContainmentLayer {
             intent_classifier: IntentClassifier::new(IntentConfig::default()),
             boundary_enforcer: BoundaryEnforcer::new(BoundaryConfig::default()),
             manipulation_resistance: ManipulationResistance::new(ResistanceConfig::default()),
-            history: Vec::with_capacity(config.history_size),
+            history: VecDeque::with_capacity(config.history_size),
             config,
         }
     }
@@ -141,11 +142,11 @@ impl ContainmentLayer {
             timestamp: now,
         };
 
-        // Archive
+        // Archive (O(1) rotation using VecDeque)
         if self.history.len() >= self.config.history_size {
-            self.history.remove(0);
+            self.history.pop_front();
         }
-        self.history.push(result.clone());
+        self.history.push_back(result.clone());
 
         result
     }

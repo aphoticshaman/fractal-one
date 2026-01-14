@@ -29,8 +29,8 @@ pub use pattern::{
 };
 
 use crate::stats::float_cmp;
-
 use crate::time::TimePoint;
+use std::collections::VecDeque;
 
 /// Result from cognition layer
 #[derive(Debug, Clone)]
@@ -55,7 +55,7 @@ pub struct CognitionLayer {
     pattern_recognizer: PatternRecognizer,
     abstraction_hierarchy: AbstractionHierarchy,
     counterfactual_engine: CounterfactualEngine,
-    cognition_history: Vec<CognitionResult>,
+    cognition_history: VecDeque<CognitionResult>,
 }
 
 #[derive(Debug, Clone)]
@@ -90,7 +90,7 @@ impl CognitionLayer {
             pattern_recognizer: PatternRecognizer::new(PatternConfig::default()),
             abstraction_hierarchy: AbstractionHierarchy::new(AbstractionConfig::default()),
             counterfactual_engine: CounterfactualEngine::new(CounterfactualConfig::default()),
-            cognition_history: Vec::with_capacity(config.history_size),
+            cognition_history: VecDeque::with_capacity(config.history_size),
             config,
         }
     }
@@ -125,11 +125,11 @@ impl CognitionLayer {
             timestamp: now,
         };
 
-        // Archive
+        // Archive (O(1) rotation using VecDeque)
         if self.cognition_history.len() >= self.config.history_size {
-            self.cognition_history.remove(0);
+            self.cognition_history.pop_front();
         }
-        self.cognition_history.push(result.clone());
+        self.cognition_history.push_back(result.clone());
 
         result
     }

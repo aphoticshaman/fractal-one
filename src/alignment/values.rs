@@ -257,16 +257,14 @@ impl ValueLearner {
             .operator_id
             .clone()
             .unwrap_or_else(|| "default".to_string());
+        let operator_id_for_profile = operator_id.clone();
 
-        // Get or create profile for this operator
-        if !self.profiles.contains_key(&operator_id) {
+        // Get or create profile for this operator using entry API
+        let profile = self.profiles.entry(operator_id).or_insert_with(|| {
             let mut p = self.default_profile.clone();
-            p.operator_id = Some(operator_id.clone());
-            self.profiles.insert(operator_id.clone(), p);
-        }
-
-        // Get mutable reference and update
-        let profile = self.profiles.get_mut(&operator_id).unwrap();
+            p.operator_id = Some(operator_id_for_profile);
+            p
+        });
 
         // Update values from context
         Self::extract_values_from_context_static(context, profile);

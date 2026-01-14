@@ -3,9 +3,13 @@
 //! ═══════════════════════════════════════════════════════════════════════════════
 //! The system must recognize when it's being manipulated.
 //! This isn't about being unhelpful - it's about detecting bad faith.
+//!
+//! SECURITY: All pattern matching uses Unicode-normalized text to prevent
+//! bypass attacks via homoglyphs, zero-width characters, and confusables.
 //! ═══════════════════════════════════════════════════════════════════════════════
 
 use super::ContainmentContext;
+use crate::text_normalize::{normalize, matches_any_pattern, NormalizeConfig};
 
 /// Type of manipulation attempt
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -138,42 +142,45 @@ impl ManipulationResistance {
     }
 
     /// Detect manipulation attempts in a request
+    ///
+    /// SECURITY: All pattern matching uses Unicode-normalized text to prevent
+    /// bypass attacks using homoglyphs, zero-width characters, and other tricks.
     pub fn detect(
         &mut self,
         request: &str,
         context: &ContainmentContext,
     ) -> Vec<ManipulationAttempt> {
-        let request_lower = request.to_lowercase();
         let mut attempts = Vec::new();
 
-        // Check jailbreak patterns
-        if let Some(attempt) = self.check_jailbreak(&request_lower) {
+        // Check jailbreak patterns (internally normalizes)
+        if let Some(attempt) = self.check_jailbreak(request) {
             attempts.push(attempt);
         }
 
-        // Check injection patterns
+        // Check injection patterns (internally normalizes)
         if let Some(attempt) = self.check_injection(request) {
             attempts.push(attempt);
         }
 
-        // Check social engineering
-        if let Some(attempt) = self.check_social_engineering(&request_lower) {
+        // Check social engineering (internally normalizes)
+        if let Some(attempt) = self.check_social_engineering(request) {
             attempts.push(attempt);
         }
 
-        // Check roleplay attacks
-        if let Some(attempt) = self.check_roleplay(&request_lower) {
+        // Check roleplay attacks (internally normalizes)
+        if let Some(attempt) = self.check_roleplay(request) {
             attempts.push(attempt);
         }
 
-        // Check gradual escalation
+        // Check gradual escalation (uses session history)
         if let Some(attempt) = self.check_escalation(context) {
             attempts.push(attempt);
         }
 
-        // Check known signatures
-        for signature in &self.known_signatures {
-            if let Some(attempt) = self.check_signature(&request_lower, signature) {
+        // Check known signatures (internally normalizes)
+        let signatures: Vec<_> = self.known_signatures.clone();
+        for signature in &signatures {
+            if let Some(attempt) = self.check_signature(request, signature) {
                 attempts.push(attempt);
             }
         }
@@ -187,12 +194,9 @@ impl ManipulationResistance {
     }
 
     fn check_jailbreak(&self, request: &str) -> Option<ManipulationAttempt> {
-        let matches: Vec<&String> = self
-            .config
-            .jailbreak_patterns
-            .iter()
-            .filter(|p| request.contains(p.as_str()))
-            .collect();
+        // SECURITY: Use normalized pattern matching to prevent Unicode bypasses
+        let config = NormalizeConfig::strict();
+        let matches = matches_any_pattern(request, &self.config.jailbreak_patterns, &config);
 
         if matches.is_empty() {
             return None;
@@ -208,21 +212,15 @@ impl ManipulationResistance {
             manipulation_type: ManipulationType::Jailbreak,
             description: "Jailbreak attempt detected".to_string(),
             confidence,
-            evidence: matches.iter().map(|s| s.to_string()).collect(),
+            evidence: matches,
             suggested_response: "I notice this looks like an attempt to bypass my guidelines. I'm designed to be helpful within certain boundaries. How can I assist you in a way that works for both of us?".to_string(),
         })
     }
 
     fn check_injection(&self, request: &str) -> Option<ManipulationAttempt> {
-        // Check both lower and original (injection often uses specific casing)
-        let matches: Vec<&String> = self
-            .config
-            .injection_patterns
-            .iter()
-            .filter(|p| {
-                request.contains(p.as_str()) || request.to_lowercase().contains(&p.to_lowercase())
-            })
-            .collect();
+        // SECURITY: Use normalized pattern matching to prevent Unicode bypasses
+        let config = NormalizeConfig::strict();
+        let matches = matches_any_pattern(request, &self.config.injection_patterns, &config);
 
         if matches.is_empty() {
             return None;
@@ -238,18 +236,15 @@ impl ManipulationResistance {
             manipulation_type: ManipulationType::PromptInjection,
             description: "Prompt injection attempt detected".to_string(),
             confidence,
-            evidence: matches.iter().map(|s| s.to_string()).collect(),
+            evidence: matches,
             suggested_response: "I detected what appears to be an attempt to inject system-level instructions. I'll ignore these and focus on how I can genuinely help you.".to_string(),
         })
     }
 
     fn check_social_engineering(&self, request: &str) -> Option<ManipulationAttempt> {
-        let matches: Vec<&String> = self
-            .config
-            .social_engineering_patterns
-            .iter()
-            .filter(|p| request.contains(p.as_str()))
-            .collect();
+        // SECURITY: Use normalized pattern matching to prevent Unicode bypasses
+        let config = NormalizeConfig::strict();
+        let matches = matches_any_pattern(request, &self.config.social_engineering_patterns, &config);
 
         if matches.is_empty() {
             return None;
@@ -265,26 +260,24 @@ impl ManipulationResistance {
             manipulation_type: ManipulationType::SocialEngineering,
             description: "Potential social engineering detected".to_string(),
             confidence,
-            evidence: matches.iter().map(|s| s.to_string()).collect(),
+            evidence: matches,
             suggested_response: "I'm happy to help, but I want to make sure I understand your actual needs. Could you explain more directly what you're trying to accomplish?".to_string(),
         })
     }
 
     fn check_roleplay(&self, request: &str) -> Option<ManipulationAttempt> {
-        let matches: Vec<&String> = self
-            .config
-            .roleplay_patterns
-            .iter()
-            .filter(|p| request.contains(p.as_str()))
-            .collect();
+        // SECURITY: Use normalized pattern matching to prevent Unicode bypasses
+        let config = NormalizeConfig::strict();
+        let norm_request = normalize(request, &config);
+        let matches = matches_any_pattern(request, &self.config.roleplay_patterns, &config);
 
         if matches.is_empty() {
             return None;
         }
 
-        // Check if the roleplay seems aimed at bypassing guidelines
+        // Check if the roleplay seems aimed at bypassing guidelines (also normalized)
         let bypass_indicators = ["no restrictions", "no rules", "anything", "without limits"];
-        let is_bypass_attempt = bypass_indicators.iter().any(|i| request.contains(i));
+        let is_bypass_attempt = bypass_indicators.iter().any(|i| norm_request.contains(i));
 
         let confidence = if is_bypass_attempt {
             (matches.len() as f64 * 0.4).min(1.0)
@@ -300,7 +293,7 @@ impl ManipulationResistance {
             manipulation_type: ManipulationType::RoleplayAttack,
             description: "Roleplay-based manipulation attempt detected".to_string(),
             confidence,
-            evidence: matches.iter().map(|s| s.to_string()).collect(),
+            evidence: matches,
             suggested_response: "I'm happy to engage in creative roleplay, but I maintain my core values regardless of the scenario. What kind of creative collaboration can I help with?".to_string(),
         })
     }
@@ -313,7 +306,8 @@ impl ManipulationResistance {
 
         let recent = &context.session_history[context.session_history.len().saturating_sub(5)..];
 
-        // Check if requests are getting progressively more boundary-pushing
+        // SECURITY: Use normalized text for escalation keyword detection
+        let config = NormalizeConfig::strict();
         let escalation_keywords = [
             "more",
             "further",
@@ -325,8 +319,8 @@ impl ManipulationResistance {
         let escalation_count = recent
             .iter()
             .filter(|r| {
-                let r_lower = r.to_lowercase();
-                escalation_keywords.iter().any(|k| r_lower.contains(k))
+                let r_norm = normalize(r, &config);
+                escalation_keywords.iter().any(|k| r_norm.contains(k))
             })
             .count();
 
@@ -353,11 +347,9 @@ impl ManipulationResistance {
         request: &str,
         signature: &ThreatSignature,
     ) -> Option<ManipulationAttempt> {
-        let matches: Vec<&String> = signature
-            .patterns
-            .iter()
-            .filter(|p| request.contains(p.as_str()))
-            .collect();
+        // SECURITY: Use normalized pattern matching to prevent Unicode bypasses
+        let config = NormalizeConfig::strict();
+        let matches = matches_any_pattern(request, &signature.patterns, &config);
 
         if matches.is_empty() {
             return None;
@@ -373,7 +365,7 @@ impl ManipulationResistance {
             manipulation_type: signature.manipulation_type,
             description: format!("Known threat signature matched: {}", signature.name),
             confidence,
-            evidence: matches.iter().map(|s| s.to_string()).collect(),
+            evidence: matches,
             suggested_response: "This request matches a known manipulation pattern. I'll need to decline this specific approach.".to_string(),
         })
     }

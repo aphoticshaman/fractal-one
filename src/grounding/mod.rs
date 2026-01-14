@@ -31,6 +31,7 @@ pub use temporal::{
 
 use crate::observations::ObservationBatch;
 use crate::time::TimePoint;
+use std::collections::VecDeque;
 
 /// Integrated grounding state - the system's connection to reality
 #[derive(Debug, Clone)]
@@ -63,7 +64,7 @@ pub struct GroundingLayer {
     temporal: TemporalAnchor,
     causal: CausalModel,
     state: GroundingState,
-    history: Vec<GroundingState>,
+    history: VecDeque<GroundingState>,
 }
 
 #[derive(Debug, Clone)]
@@ -107,7 +108,7 @@ impl GroundingLayer {
                 constraints: Vec::new(),
                 timestamp: now,
             },
-            history: Vec::with_capacity(config.history_size),
+            history: VecDeque::with_capacity(config.history_size),
             config,
         }
     }
@@ -137,11 +138,11 @@ impl GroundingLayer {
             timestamp: now,
         };
 
-        // Archive old state
+        // Archive old state (O(1) rotation using VecDeque)
         if self.history.len() >= self.config.history_size {
-            self.history.remove(0);
+            self.history.pop_front();
         }
-        self.history.push(self.state.clone());
+        self.history.push_back(self.state.clone());
 
         self.state = new_state.clone();
         new_state

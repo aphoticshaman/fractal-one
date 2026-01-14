@@ -32,7 +32,7 @@ pub use consensus::{
 };
 
 use crate::time::TimePoint;
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 
 /// A task for the orchestration layer to process
 #[derive(Debug, Clone)]
@@ -91,7 +91,7 @@ pub struct OrchestrationLayer {
     delta: DeltaAgent,
     conductor: Conductor,
     consensus_engine: ConsensusEngine,
-    history: Vec<OrchestrationResult>,
+    history: VecDeque<OrchestrationResult>,
 }
 
 #[derive(Debug, Clone)]
@@ -126,7 +126,7 @@ impl OrchestrationLayer {
             delta: DeltaAgent::new(AgentConfig::default()),
             conductor: Conductor::new(ConductorConfig::default()),
             consensus_engine: ConsensusEngine::new(ConsensusConfig::default()),
-            history: Vec::with_capacity(config.history_size),
+            history: VecDeque::with_capacity(config.history_size),
             config,
         }
     }
@@ -209,11 +209,11 @@ impl OrchestrationLayer {
             timestamp: now,
         };
 
-        // Archive
+        // Archive (O(1) rotation using VecDeque)
         if self.history.len() >= self.config.history_size {
-            self.history.remove(0);
+            self.history.pop_front();
         }
-        self.history.push(result.clone());
+        self.history.push_back(result.clone());
 
         result
     }

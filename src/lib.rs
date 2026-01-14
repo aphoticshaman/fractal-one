@@ -37,7 +37,14 @@ pub mod vestibular;
 // CORE MODULES (always available)
 // ═══════════════════════════════════════════════════════════════════════════════
 
+pub mod audit;
+pub mod auth;
+pub mod error;
 pub mod neuro_link;
+pub mod text_normalize;
+
+// Re-export common error types
+pub use error::{FractalError, FractalResult};
 
 pub mod cortex;
 pub mod heart;
@@ -184,6 +191,10 @@ pub mod cognition;
 pub mod agi_core;
 
 // Re-export core types
+pub use auth::{
+    AuthenticatedIdentity, AuthenticationError, AuthenticationResult, AuthorizationLevel,
+    CredentialType, InMemoryAuthProvider, AuthProvider,
+};
 pub use neuro_link::{Pulse, Synapse};
 pub use noci_pulse::{NociPulseData, NociPulseDecoder, NociPulseEncoder};
 pub use nociception::{

@@ -23,6 +23,7 @@ use crate::neuro_link::{Pulse, Synapse};
 use anyhow::Result;
 use reqwest::blocking::Client;
 use serde_json::{json, Value};
+use std::collections::VecDeque;
 use std::env;
 use std::fs;
 use std::io::{self, BufRead};
@@ -124,7 +125,7 @@ pub async fn run() -> Result<()> {
     let mut last_spike_time = Instant::now() - Duration::from_secs(SPIKE_COOLDOWN_SECS);
     let mut last_cpu: f64 = 0.0;
     let mut last_pulse_id: u64 = 0;
-    let mut pulse_history: Vec<PulseSnapshot> = Vec::with_capacity(100);
+    let mut pulse_history: VecDeque<PulseSnapshot> = VecDeque::with_capacity(100);
     let mut query_count: u32 = 0;
 
     loop {
@@ -147,9 +148,10 @@ pub async fn run() -> Result<()> {
         last_pulse_id = pulse.id;
 
         let snapshot = PulseSnapshot::from(&pulse);
-        pulse_history.push(snapshot.clone());
+        pulse_history.push_back(snapshot.clone());
+        // O(1) rotation using VecDeque
         if pulse_history.len() > 100 {
-            pulse_history.remove(0);
+            pulse_history.pop_front();
         }
 
         let file_input = fs::read_to_string(synapse_path)
@@ -171,7 +173,7 @@ pub async fn run() -> Result<()> {
             let event = TriggerEvent {
                 pulse: snapshot.clone(),
                 trigger_reason: reason.clone(),
-                pulse_history: pulse_history.clone(),
+                pulse_history: pulse_history.iter().cloned().collect(),
             };
 
             query_count += 1;

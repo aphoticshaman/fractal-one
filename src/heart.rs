@@ -3,6 +3,7 @@
 //! ═══════════════════════════════════════════════════════════════════════════════
 
 use crate::neuro_link::{Pulse, Synapse};
+use crate::stats::float_cmp_f32;
 use anyhow::Result;
 use std::{
     hint,
@@ -47,7 +48,7 @@ pub async fn run() -> Result<()> {
             let pid = sys
                 .processes()
                 .iter()
-                .max_by(|a, b| a.1.cpu_usage().partial_cmp(&b.1.cpu_usage()).unwrap())
+                .max_by(|a, b| float_cmp_f32(&a.1.cpu_usage(), &b.1.cpu_usage()))
                 .map(|(p, _)| p.as_u32())
                 .unwrap_or(0);
             sense_perception.bad_actor_pid.store(pid, Ordering::Relaxed);

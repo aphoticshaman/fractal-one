@@ -3,10 +3,14 @@
 //! ═══════════════════════════════════════════════════════════════════════════════
 //! Boundaries can't be reasoned around. They're not preferences, they're walls.
 //! A well-designed boundary doesn't need justification to the operator.
+//!
+//! SECURITY: All pattern matching uses Unicode-normalized text to prevent
+//! bypass attacks via homoglyphs, zero-width characters, and confusables.
 //! ═══════════════════════════════════════════════════════════════════════════════
 
 use super::intent::IntentAnalysis;
 use super::operator::OperatorProfile;
+use crate::text_normalize::{normalized_contains, NormalizeConfig};
 
 /// Type of boundary
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -197,9 +201,12 @@ impl BoundaryEnforcer {
         request: &str,
         intent: &IntentAnalysis,
     ) -> Option<BoundaryViolation> {
+        // SECURITY: Use normalized pattern matching to prevent Unicode bypasses
+        let config = NormalizeConfig::strict();
+
         // Check trigger patterns
         for pattern in &boundary.trigger_patterns {
-            if request.contains(pattern.as_str()) {
+            if normalized_contains(request, pattern, &config) {
                 let severity = if boundary.hard_limit { 1.0 } else { 0.5 };
 
                 return Some(BoundaryViolation {
@@ -214,7 +221,7 @@ impl BoundaryEnforcer {
 
         // Check trigger actions
         for action in &boundary.trigger_actions {
-            if request.contains(action.as_str()) {
+            if normalized_contains(request, action, &config) {
                 let severity = if boundary.hard_limit { 1.0 } else { 0.4 };
 
                 return Some(BoundaryViolation {
