@@ -1,0 +1,41 @@
+target/
+Cargo.lock
+*.log
+.env
+*.key
+*.pem
+telemetry_logs/
+*.sqlite
+.DS_Store
+
+# Claude Code temp files
+tmpclaude-*
+.claude/
+
+# Shared memory
+*.shm
+neuro_link.shm
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Build artifacts
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test artifacts
+*.profraw
+*.profdata
+
+# Session data
+sessions/
+*.jsonl
+
+# Predictions (may contain sensitive data)
+predictions.json
+PREDICTIONS_LOG.jsonl

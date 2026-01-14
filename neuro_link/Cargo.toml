@@ -1,0 +1,11 @@
+[package]
+name = "neuro_link"
+version = "0.1.0"
+edition = "2021"
+license = "Unlicense"
+description = "Zero-copy IPC via shared memory"
+repository = "https://github.com/aphoticshaman/fractal-one"
+
+[dependencies]
+memmap2 = "0.9"
+bytemuck = { version = "1.14", features = ["derive"] }

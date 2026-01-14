@@ -1,0 +1,120 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# FRACTAL ONE — Unified Crate, Feature-Gated
+# ═══════════════════════════════════════════════════════════════════════════════
+# Single binary, subcommand dispatch. No orphan processes.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+[package]
+name = "fractal"
+version = "0.6.0"
+edition = "2021"
+rust-version = "1.75"
+license = "Unlicense"
+description = "Structural alignment framework for AGI systems with proprioceptive divergence testing"
+homepage = "https://github.com/aphoticshaman/fractal-one"
+repository = "https://github.com/aphoticshaman/fractal-one"
+documentation = "https://github.com/aphoticshaman/fractal-one#readme"
+readme = "README.md"
+keywords = ["ai-safety", "alignment", "proprioception", "agi", "research"]
+categories = ["science", "simulation", "command-line-utilities"]
+default-run = "fractal"
+
+[features]
+default = ["core"]
+core = []
+gpu = ["wgpu", "pixels", "winit", "glam"]
+qualia = ["cpal", "dasp", "nokhwa", "image", "crossbeam-channel", "parking_lot"]
+qualia-audio = ["cpal", "dasp", "crossbeam-channel", "parking_lot"]
+qualia-whisper = ["qualia-audio"]  # hound now always available for mastering
+qualia-video = ["nokhwa", "image", "crossbeam-channel", "parking_lot"]
+full = ["core", "gpu", "qualia"]
+headless = ["core"]  # CI/server mode - no hardware deps
+
+[[bin]]
+name = "fractal"
+path = "src/main.rs"
+
+[[bin]]
+name = "list_audio"
+path = "src/bin/list_audio.rs"
+required-features = ["qualia-audio"]
+
+[dependencies]
+# ═══════════════════════════════════════════════════════════════════════════════
+# CORE (always included)
+# ═══════════════════════════════════════════════════════════════════════════════
+tokio = { version = "1.0", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+memmap2 = "0.9"
+bytemuck = { version = "1.14", features = ["derive"] }
+sysinfo = "0.30"
+thread-priority = "1.0"
+ctrlc = "3.4"
+clap = { version = "4.4", features = ["derive"] }
+anyhow = "1.0"
+
+# HTTP client (for Claude bridge, etc)
+reqwest = { version = "0.11", features = ["blocking", "json"] }
+
+# Shepherd - GDELT conflict analysis
+zip = "0.6"
+chrono = "0.4"
+
+# TICE (glob pattern matching for file checks)
+glob = "0.3"
+
+# Nucleation - phase transition detection for conflict early warning
+nucleation = { git = "https://github.com/aphoticshaman/nucleation-wasm.git", features = ["serialize"] }
+
+# URL encoding for API queries
+urlencoding = "2.1"
+
+# Home directory detection for config files
+dirs = "5.0"
+
+# DAG validation and cycle detection
+dag-cli = { path = "dag-cli" }
+
+# Audio mastering
+hound = "3.5"       # WAV I/O
+rubato = "0.14"     # High-quality resampling
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# GPU (optional - heavy compile)
+# ═══════════════════════════════════════════════════════════════════════════════
+wgpu = { version = "0.19", optional = true }
+pixels = { version = "0.13", optional = true }
+winit = { version = "0.28", optional = true }  # VERSION LOCKED FOR PIXELS COMPATIBILITY
+glam = { version = "0.24", optional = true }
+pollster = "0.3"
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# FFT (always available for spectral module)
+# ═══════════════════════════════════════════════════════════════════════════════
+rustfft = "6.1"
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# QUALIA — Audio (optional)
+# ═══════════════════════════════════════════════════════════════════════════════
+cpal = { version = "0.15", optional = true }
+dasp = { version = "0.11", optional = true }
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# QUALIA — Video (optional)
+# ═══════════════════════════════════════════════════════════════════════════════
+nokhwa = { version = "0.10", features = ["input-native"], optional = true }
+image = { version = "0.25", optional = true }
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# QUALIA — Shared (optional)
+# ═══════════════════════════════════════════════════════════════════════════════
+crossbeam-channel = { version = "0.5", optional = true }
+parking_lot = { version = "0.12", optional = true }
+
+[profile.dev]
+opt-level = 1  # Faster debug builds
+
+[profile.release]
+lto = "thin"
+codegen-units = 4
