@@ -118,3 +118,6 @@ opt-level = 1  # Faster debug builds
 [profile.release]
 lto = "thin"
 codegen-units = 4
+
+[workspace]
+members = ["dag-cli", "fractal_agent", "neuro_link"]

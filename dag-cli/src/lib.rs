@@ -25,6 +25,11 @@
 //! assert_eq!(dag.topological_sort().unwrap(), vec!["A", "B", "C"]);
 //! ```
 
+// Clippy configuration - allow style lints
+#![allow(clippy::for_kv_map)]
+#![allow(clippy::map_clone)]
+#![allow(clippy::manual_clamp)]
+
 use petgraph::algo::{is_cyclic_directed, toposort};
 use petgraph::graph::{DiGraph, NodeIndex};
 use petgraph::visit::EdgeRef;

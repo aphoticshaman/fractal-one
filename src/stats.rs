@@ -151,7 +151,7 @@ impl RobustStats {
         sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
 
         let mid = sorted.len() / 2;
-        let median = if sorted.len().is_multiple_of(2) {
+        let median = if sorted.len() % 2 == 0 {
             (sorted[mid - 1] + sorted[mid]) / 2.0
         } else {
             sorted[mid]
@@ -178,7 +178,7 @@ impl RobustStats {
         deviations.sort_by(|a, b| a.partial_cmp(b).unwrap());
 
         let mid = deviations.len() / 2;
-        let mad = if deviations.len().is_multiple_of(2) {
+        let mad = if deviations.len() % 2 == 0 {
             (deviations[mid - 1] + deviations[mid]) / 2.0
         } else {
             deviations[mid]

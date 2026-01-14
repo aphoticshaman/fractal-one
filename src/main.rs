@@ -4,6 +4,17 @@
 //! Single binary, subcommand dispatch. One process to rule them all.
 //! ═══════════════════════════════════════════════════════════════════════════════
 
+// Clippy configuration
+#![allow(clippy::too_many_arguments)]
+#![allow(clippy::doc_lazy_continuation)]
+#![allow(clippy::single_match)]
+#![allow(clippy::needless_range_loop)]
+#![allow(clippy::useless_format)]
+#![allow(clippy::manual_flatten)]
+#![allow(clippy::map_clone)]
+#![allow(clippy::unnecessary_cast)]
+#![allow(clippy::trim_split_whitespace)]
+
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 

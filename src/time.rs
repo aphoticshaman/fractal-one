@@ -69,7 +69,11 @@ impl TimePoint {
             .duration_since(reference.wall)
             .unwrap_or(Duration::ZERO);
 
-        wall_delta.abs_diff(mono_delta)
+        if wall_delta > mono_delta {
+            wall_delta - mono_delta
+        } else {
+            mono_delta - wall_delta
+        }
     }
 
     /// Signed skew (positive = wall fast, negative = wall slow)

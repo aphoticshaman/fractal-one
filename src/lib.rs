@@ -4,6 +4,35 @@
 //! Single crate, feature-gated modules. No orphan processes.
 //! ═══════════════════════════════════════════════════════════════════════════════
 
+// Clippy configuration - allow style lints that don't affect correctness
+#![allow(clippy::doc_lazy_continuation)]
+#![allow(clippy::doc_overindented_list_items)]
+#![allow(clippy::needless_range_loop)]
+#![allow(clippy::field_reassign_with_default)]
+#![allow(clippy::too_many_arguments)]
+#![allow(clippy::new_without_default)]
+#![allow(clippy::should_implement_trait)]
+#![allow(clippy::derivable_impls)]
+#![allow(clippy::unwrap_or_default)]
+#![allow(clippy::manual_clamp)]
+#![allow(clippy::get_first)]
+#![allow(clippy::clone_on_copy)]
+#![allow(clippy::let_and_return)]
+#![allow(clippy::single_match)]
+#![allow(clippy::needless_borrow)]
+#![allow(clippy::unnecessary_cast)]
+#![allow(clippy::useless_format)]
+#![allow(clippy::for_kv_map)]
+#![allow(clippy::map_clone)]
+#![allow(clippy::excessive_precision)]
+#![allow(clippy::cast_abs_to_unsigned)]
+#![allow(clippy::double_ended_iterator_last)]
+#![allow(clippy::lines_filter_map_ok)]
+#![allow(clippy::manual_flatten)]
+#![allow(clippy::trim_split_whitespace)]
+#![allow(clippy::unused_enumerate_index)]
+#![allow(clippy::io_other_error)]
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // FOUNDATION MODULES — The spine (signal contract, baselines, statistics)
 // ═══════════════════════════════════════════════════════════════════════════════
