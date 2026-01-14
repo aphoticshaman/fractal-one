@@ -428,7 +428,7 @@ mod tests {
             ..Default::default()
         };
 
-        let profile1 = detector.detect(&context);
+        let _profile1 = detector.detect(&context);
         let profile2 = detector.detect(&context);
 
         assert_eq!(profile2.request_count, 2);

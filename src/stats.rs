@@ -60,6 +60,94 @@ pub fn float_cmp_nan_last(a: &f64, b: &f64) -> Ordering {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// SIMPLE DESCRIPTIVE STATISTICS — Standalone functions for one-off calculations
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/// Compute arithmetic mean of a slice.
+///
+/// Returns `None` if the slice is empty.
+#[inline]
+pub fn mean(values: &[f64]) -> Option<f64> {
+    if values.is_empty() {
+        return None;
+    }
+    Some(values.iter().sum::<f64>() / values.len() as f64)
+}
+
+/// Compute arithmetic mean of f32 values.
+///
+/// Returns `None` if the slice is empty.
+#[inline]
+pub fn mean_f32(values: &[f32]) -> Option<f32> {
+    if values.is_empty() {
+        return None;
+    }
+    Some(values.iter().sum::<f32>() / values.len() as f32)
+}
+
+/// Compute population variance of a slice.
+///
+/// Returns `None` if the slice is empty.
+pub fn variance(values: &[f64]) -> Option<f64> {
+    let m = mean(values)?;
+    Some(values.iter().map(|x| (x - m).powi(2)).sum::<f64>() / values.len() as f64)
+}
+
+/// Compute population variance of f32 values.
+///
+/// Returns `None` if the slice is empty.
+pub fn variance_f32(values: &[f32]) -> Option<f32> {
+    let m = mean_f32(values)?;
+    Some(values.iter().map(|x| (x - m).powi(2)).sum::<f32>() / values.len() as f32)
+}
+
+/// Compute population standard deviation of a slice.
+///
+/// Returns `None` if the slice is empty.
+#[inline]
+pub fn std_dev(values: &[f64]) -> Option<f64> {
+    variance(values).map(|v| v.sqrt())
+}
+
+/// Compute population standard deviation of f32 values.
+///
+/// Returns `None` if the slice is empty.
+#[inline]
+pub fn std_dev_f32(values: &[f32]) -> Option<f32> {
+    variance_f32(values).map(|v| v.sqrt())
+}
+
+/// Compute median of a slice (makes a sorted copy).
+///
+/// Returns `None` if the slice is empty.
+pub fn median(values: &[f64]) -> Option<f64> {
+    if values.is_empty() {
+        return None;
+    }
+    let mut sorted: Vec<f64> = values.to_vec();
+    sorted.sort_by(float_cmp);
+    let mid = sorted.len() / 2;
+    if sorted.len() % 2 == 0 {
+        Some((sorted[mid - 1] + sorted[mid]) / 2.0)
+    } else {
+        Some(sorted[mid])
+    }
+}
+
+/// Compute percentile of a slice (makes a sorted copy).
+///
+/// `p` should be in range [0, 1]. Returns `None` if slice is empty.
+pub fn percentile(values: &[f64], p: f64) -> Option<f64> {
+    if values.is_empty() {
+        return None;
+    }
+    let mut sorted: Vec<f64> = values.to_vec();
+    sorted.sort_by(float_cmp);
+    let idx = (p * (sorted.len() - 1) as f64).round() as usize;
+    Some(sorted[idx.min(sorted.len() - 1)])
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // EWMA — Exponentially Weighted Moving Average
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -587,5 +675,70 @@ mod tests {
 
         assert_eq!(tracker.mean(), 3.0);
         assert!((tracker.variance() - 2.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_standalone_mean() {
+        assert_eq!(mean(&[1.0, 2.0, 3.0, 4.0, 5.0]), Some(3.0));
+        assert_eq!(mean(&[]), None);
+        assert_eq!(mean(&[42.0]), Some(42.0));
+    }
+
+    #[test]
+    fn test_standalone_variance() {
+        // 1,2,3,4,5: mean=3, variance = ((4+1+0+1+4)/5) = 2
+        let v = variance(&[1.0, 2.0, 3.0, 4.0, 5.0]).unwrap();
+        assert!((v - 2.0).abs() < 0.001);
+        assert_eq!(variance(&[]), None);
+    }
+
+    #[test]
+    fn test_standalone_std_dev() {
+        let sd = std_dev(&[1.0, 2.0, 3.0, 4.0, 5.0]).unwrap();
+        assert!((sd - 2.0_f64.sqrt()).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_standalone_median() {
+        // Odd count
+        assert_eq!(median(&[1.0, 2.0, 3.0, 4.0, 5.0]), Some(3.0));
+        // Even count
+        assert_eq!(median(&[1.0, 2.0, 3.0, 4.0]), Some(2.5));
+        // Unsorted input
+        assert_eq!(median(&[5.0, 1.0, 3.0, 2.0, 4.0]), Some(3.0));
+        assert_eq!(median(&[]), None);
+    }
+
+    #[test]
+    fn test_standalone_percentile() {
+        let data = [1.0, 2.0, 3.0, 4.0, 5.0];
+        assert_eq!(percentile(&data, 0.0), Some(1.0));
+        assert_eq!(percentile(&data, 1.0), Some(5.0));
+        assert_eq!(percentile(&data, 0.5), Some(3.0));
+        assert_eq!(percentile(&[], 0.5), None);
+    }
+
+    #[test]
+    fn test_float_cmp_with_nan() {
+        let mut values = vec![3.0, f64::NAN, 1.0, 2.0];
+        // Should not panic even with NaN
+        values.sort_by(float_cmp);
+        // All non-NaN values should be present
+        let non_nan: Vec<f64> = values.iter().copied().filter(|x| !x.is_nan()).collect();
+        assert_eq!(non_nan.len(), 3);
+        // NaN count preserved
+        assert_eq!(values.iter().filter(|x| x.is_nan()).count(), 1);
+    }
+
+    #[test]
+    fn test_float_cmp_nan_last_ordering() {
+        let mut values = vec![3.0, f64::NAN, 1.0, f64::NAN, 2.0];
+        values.sort_by(float_cmp_nan_last);
+        // NaNs should be at the end
+        assert_eq!(values[0], 1.0);
+        assert_eq!(values[1], 2.0);
+        assert_eq!(values[2], 3.0);
+        assert!(values[3].is_nan());
+        assert!(values[4].is_nan());
     }
 }
