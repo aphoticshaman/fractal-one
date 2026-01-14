@@ -190,6 +190,14 @@ pub mod cognition;
 // AGI CORE — Unified integration of all layers
 pub mod agi_core;
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// FORECASTING — Salience Detection (Not Prediction)
+// ═══════════════════════════════════════════════════════════════════════════════
+// The system doesn't know everything better than the market.
+// But it knows when it knows better than the market.
+// Core insight: Confidence ≠ Salience. Track salience precision, not Brier score.
+pub mod forecasting;
+
 // Re-export core types
 pub use auth::{
     AuthenticatedIdentity, AuthenticationError, AuthenticationResult, AuthorizationLevel,
@@ -280,4 +288,20 @@ pub use cognition::{
 pub use agi_core::{
     AGIAction, AGICore, AGICoreConfig, AGICycleResult, AGIDecision, AGIInput, AGIState,
     AGIStatistics, FeedbackController,
+};
+
+// Forecasting Layer — Salience detection (knowing when you know better than market)
+pub use forecasting::{
+    // Core salience types
+    SalienceAnalysis, SalienceConfig, SalienceDetector, SalienceSignal,
+    SalienceLevel, BetSignal, BetDirection,
+    // Factor comparison
+    Factor, FactorWeight, FactorDifferential, FactorExtractor, FactorComparison,
+    MarketFactors, PodFactors,
+    // Evaluation metrics
+    SalienceEvaluation, SalienceMetrics, FactorOutcome, SaliencePrecision,
+    EvaluationResult, BacktestResult,
+    // Live tracking
+    SalienceTracker, TrackerConfig, ActivePrediction, ResolvedPrediction,
+    TrackerState, PerformanceSnapshot,
 };
