@@ -95,26 +95,28 @@ pub struct ClaudeClient {
 
 impl ClaudeClient {
     /// Create new client
+    ///
+    /// Returns error if HTTP client construction fails.
     pub fn new(
         api_key: String,
         model: String,
         endpoint: String,
         max_tokens: u32,
         timeout_secs: u64,
-    ) -> Self {
+    ) -> Result<Self> {
         let client = Client::builder()
             .timeout(Duration::from_secs(timeout_secs))
             .build()
-            .expect("Failed to build HTTP client");
+            .map_err(|e| anyhow!("Failed to build HTTP client: {}", e))?;
 
-        Self {
+        Ok(Self {
             client,
             api_key,
             endpoint,
             model,
             max_tokens,
             timeout: Duration::from_secs(timeout_secs),
-        }
+        })
     }
 
     /// Send messages and return response with metrics

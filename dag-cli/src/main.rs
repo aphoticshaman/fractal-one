@@ -6,11 +6,37 @@
 //!   dag viz graph.json       # Output DOT format
 //!   dag info graph.json      # Show graph statistics
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use dag_cli::{Dag, DagSpec};
 use std::io::{self, Read, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+
+/// Validate a file path to prevent path traversal attacks.
+/// For existing files: canonicalizes and checks for `..` components.
+/// For new files: validates parent directory exists.
+fn validate_path(path: &Path, must_exist: bool) -> Result<PathBuf> {
+    // Convert to string and check for obvious traversal attempts
+    let path_str = path.to_string_lossy();
+    if path_str.contains("..") {
+        anyhow::bail!("Path traversal not allowed: {}", path_str);
+    }
+
+    if must_exist {
+        let canonical = path
+            .canonicalize()
+            .with_context(|| format!("Failed to resolve path: {}", path.display()))?;
+        Ok(canonical)
+    } else {
+        // For new files, validate parent exists
+        if let Some(parent) = path.parent() {
+            if !parent.as_os_str().is_empty() && !parent.exists() {
+                anyhow::bail!("Parent directory does not exist: {}", parent.display());
+            }
+        }
+        Ok(path.to_path_buf())
+    }
+}
 
 #[derive(Parser)]
 #[command(name = "dag")]
@@ -108,7 +134,8 @@ fn read_input(input: &str) -> Result<String> {
         io::stdin().read_to_string(&mut buf)?;
         Ok(buf)
     } else {
-        Ok(std::fs::read_to_string(input)?)
+        let path = validate_path(Path::new(input), true)?;
+        Ok(std::fs::read_to_string(path)?)
     }
 }
 
@@ -157,10 +184,12 @@ fn main() -> Result<()> {
             let dot = dag.to_dot();
 
             if let Some(png_path) = png {
+                // Validate output path before passing to external command
+                let validated_path = validate_path(&png_path, false)?;
                 // Pipe through dot command
                 let mut child = std::process::Command::new("dot")
                     .args(["-Tpng", "-o"])
-                    .arg(&png_path)
+                    .arg(&validated_path)
                     .stdin(std::process::Stdio::piped())
                     .spawn()
                     .map_err(|e| anyhow::anyhow!("Failed to run 'dot' command (install graphviz): {}", e))?;
@@ -171,13 +200,14 @@ fn main() -> Result<()> {
 
                 let status = child.wait()?;
                 if status.success() {
-                    println!("Written to {}", png_path.display());
+                    println!("Written to {}", validated_path.display());
                 } else {
                     anyhow::bail!("dot command failed");
                 }
             } else if let Some(out_path) = output {
-                std::fs::write(&out_path, &dot)?;
-                println!("Written to {}", out_path.display());
+                let validated_out = validate_path(&out_path, false)?;
+                std::fs::write(&validated_out, &dot)?;
+                println!("Written to {}", validated_out.display());
             } else {
                 print!("{}", dot);
             }
@@ -242,8 +272,9 @@ fn main() -> Result<()> {
             let json = spec.to_json()?;
 
             if let Some(out_path) = output {
-                std::fs::write(&out_path, &json)?;
-                println!("Created {}", out_path.display());
+                let validated_out = validate_path(&out_path, false)?;
+                std::fs::write(&validated_out, &json)?;
+                println!("Created {}", validated_out.display());
             } else {
                 print!("{}", json);
             }
@@ -254,7 +285,8 @@ fn main() -> Result<()> {
             name,
             probability,
         } => {
-            let json = std::fs::read_to_string(&input)?;
+            let input_path = validate_path(Path::new(&input), true)?;
+            let json = std::fs::read_to_string(&input_path)?;
             let mut spec = DagSpec::from_json(&json)?;
 
             if spec.nodes.contains(&name) {
@@ -277,12 +309,13 @@ fn main() -> Result<()> {
             // Validate still valid DAG
             Dag::from_spec(&spec)?;
 
-            std::fs::write(&input, spec.to_json()?)?;
+            std::fs::write(&input_path, spec.to_json()?)?;
             println!("Added node '{}'", name);
         }
 
         Commands::AddEdge { input, from, to } => {
-            let json = std::fs::read_to_string(&input)?;
+            let input_path = validate_path(Path::new(&input), true)?;
+            let json = std::fs::read_to_string(&input_path)?;
             let mut spec = DagSpec::from_json(&json)?;
 
             if !spec.nodes.contains(&from) {
@@ -297,7 +330,7 @@ fn main() -> Result<()> {
             // Validate still valid DAG (will error if cycle created)
             match Dag::from_spec(&spec) {
                 Ok(_) => {
-                    std::fs::write(&input, spec.to_json()?)?;
+                    std::fs::write(&input_path, spec.to_json()?)?;
                     println!("Added edge {} -> {}", from, to);
                 }
                 Err(dag_cli::DagError::CycleDetected { cycle }) => {

@@ -132,11 +132,52 @@ impl DagSpec {
         }
     }
 
-    /// Parse from JSON string
+    /// Maximum allowed JSON size (10 MB)
+    const MAX_JSON_SIZE: usize = 10 * 1024 * 1024;
+    /// Maximum allowed nodes in a graph
+    const MAX_NODES: usize = 10_000;
+    /// Maximum allowed edges in a graph
+    const MAX_EDGES: usize = 100_000;
+
+    /// Parse from JSON string with size validation
     pub fn from_json(json: &str) -> Result<Self, DagError> {
-        serde_json::from_str(json).map_err(|e| DagError::ParseError {
+        // Validate JSON size to prevent DoS
+        if json.len() > Self::MAX_JSON_SIZE {
+            return Err(DagError::ParseError {
+                message: format!(
+                    "JSON too large: {} bytes (max {} bytes)",
+                    json.len(),
+                    Self::MAX_JSON_SIZE
+                ),
+            });
+        }
+
+        let spec: Self = serde_json::from_str(json).map_err(|e| DagError::ParseError {
             message: e.to_string(),
-        })
+        })?;
+
+        // Validate graph size to prevent resource exhaustion
+        if spec.nodes.len() > Self::MAX_NODES {
+            return Err(DagError::ParseError {
+                message: format!(
+                    "Too many nodes: {} (max {})",
+                    spec.nodes.len(),
+                    Self::MAX_NODES
+                ),
+            });
+        }
+
+        if spec.edges.len() > Self::MAX_EDGES {
+            return Err(DagError::ParseError {
+                message: format!(
+                    "Too many edges: {} (max {})",
+                    spec.edges.len(),
+                    Self::MAX_EDGES
+                ),
+            });
+        }
+
+        Ok(spec)
     }
 
     /// Serialize to JSON string

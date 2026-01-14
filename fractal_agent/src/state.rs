@@ -101,9 +101,22 @@ impl AgentState {
         }
     }
 
+    /// Maximum state file size (50 MB - allows for long conversations)
+    const MAX_STATE_SIZE: usize = 50 * 1024 * 1024;
+
     /// Load state from file (conversation only, fractal subsystems recreated fresh)
     pub fn load(path: &Path) -> anyhow::Result<Self> {
         let contents = std::fs::read_to_string(path)?;
+
+        // Validate file size to prevent resource exhaustion
+        if contents.len() > Self::MAX_STATE_SIZE {
+            anyhow::bail!(
+                "State file too large: {} bytes (max {} bytes)",
+                contents.len(),
+                Self::MAX_STATE_SIZE
+            );
+        }
+
         let saved: SerializableState = serde_json::from_str(&contents)?;
 
         let mut state = Self::new();

@@ -1,3 +1,30 @@
+//! # NeuroLink - Zero-Copy IPC via Shared Memory Ring Buffer
+//!
+//! This module implements a lock-free SPMC (Single Producer, Multiple Consumer)
+//! ring buffer over memory-mapped shared memory for low-latency inter-process
+//! communication.
+//!
+//! ## Safety Invariants
+//!
+//! The unsafe code in this module relies on the following invariants:
+//!
+//! 1. **Memory Layout**: `RingHeader` and `Pulse` are `#[repr(C)]` with `Pod + Zeroable`,
+//!    ensuring predictable memory layout for cross-process sharing.
+//!
+//! 2. **File Lifetime**: The memory-mapped file exists for the lifetime of `Synapse`.
+//!    The file is opened with read/write permissions and pre-allocated to the required size.
+//!
+//! 3. **Pointer Validity**: All pointer casts are valid because:
+//!    - The mapped region is at least `size_of::<RingHeader>() + size_of::<Pulse>() * BUFFER_SIZE`
+//!    - `RingHeader` is at offset 0, `Pulse` buffer starts at `size_of::<RingHeader>()`
+//!    - Index arithmetic is always `% BUFFER_SIZE`, preventing out-of-bounds access
+//!
+//! 4. **Atomic Ordering**: Head/tail indices use Acquire/Release semantics to ensure
+//!    proper synchronization between producer and consumers.
+//!
+//! 5. **Volatile Access**: `write_volatile`/`read_volatile` ensure the compiler doesn't
+//!    optimize away reads/writes to shared memory.
+
 use memmap2::MmapMut;
 use std::fs::OpenOptions;
 use std::sync::atomic::{AtomicUsize, AtomicU64, AtomicU8, Ordering};
@@ -51,17 +78,23 @@ impl Synapse {
         let size = std::mem::size_of::<RingHeader>() + (std::mem::size_of::<Pulse>() * BUFFER_SIZE);
         
         if create { file.set_len(size as u64).unwrap(); }
+        // SAFETY: File is opened with read/write access and size is pre-allocated.
+        // MmapMut lifetime is tied to Synapse, ensuring the mapping remains valid.
         let mut mmap = unsafe { MmapMut::map_mut(&file).expect("Mmap fail") };
-        
+
         if create {
+            // SAFETY: We just allocated `size` bytes, so writing zeros is valid.
             unsafe { mmap.as_mut_ptr().write_bytes(0, size); }
+            // SAFETY: mmap starts with RingHeader (repr(C)), pointer cast is valid.
             let header = unsafe { &*(mmap.as_ptr() as *const RingHeader) };
             header.target_interval.store(80, Ordering::Relaxed);
         }
         Synapse { mmap, consumer_id }
     }
 
+    // SAFETY: mmap layout has RingHeader at offset 0, repr(C) ensures valid cast.
     fn header(&self) -> &RingHeader { unsafe { &*(self.mmap.as_ptr() as *const RingHeader) } }
+    // SAFETY: Pulse buffer starts at offset size_of::<RingHeader>(), within allocated region.
     fn buffer(&self) -> *mut Pulse { unsafe { self.mmap.as_ptr().add(std::mem::size_of::<RingHeader>()) as *mut Pulse } }
     
     fn get_tail(&self) -> &AtomicUsize {
@@ -83,10 +116,12 @@ impl Synapse {
         let header = self.header();
         let head = header.head.load(Ordering::Acquire);
         let next_head = (head + 1) % BUFFER_SIZE;
+        // SAFETY: head is always < BUFFER_SIZE due to modulo, so buffer().add(head) is in bounds.
+        // write_volatile ensures the write is not optimized away for shared memory.
         unsafe { std::ptr::write_volatile(self.buffer().add(head), pulse); }
         header.head.store(next_head, Ordering::Release);
     }
-    
+
     /// Consume pulse (advances tail for this consumer)
     pub fn sense(&mut self) -> Option<Pulse> {
         let header = self.header();
@@ -94,6 +129,8 @@ impl Synapse {
         let tail = tail_atomic.load(Ordering::Acquire);
         let head = header.head.load(Ordering::Acquire);
         if tail == head { return None; }
+        // SAFETY: tail is always < BUFFER_SIZE due to modulo, so buffer().add(tail) is in bounds.
+        // read_volatile ensures we read the actual shared memory value.
         let pulse = unsafe { std::ptr::read_volatile(self.buffer().add(tail)) };
         tail_atomic.store((tail + 1) % BUFFER_SIZE, Ordering::Release);
         Some(pulse)
@@ -105,6 +142,8 @@ impl Synapse {
         let head = header.head.load(Ordering::Acquire);
         if head == 0 { return None; }
         let idx = if head == 0 { BUFFER_SIZE - 1 } else { head - 1 };
+        // SAFETY: idx is always < BUFFER_SIZE (either head-1 or BUFFER_SIZE-1), in bounds.
+        // read_volatile ensures we read the actual shared memory value.
         let pulse = unsafe { std::ptr::read_volatile(self.buffer().add(idx)) };
         Some(pulse)
     }

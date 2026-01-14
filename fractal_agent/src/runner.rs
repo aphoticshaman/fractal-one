@@ -43,7 +43,7 @@ impl AgentRunner {
             config.api_endpoint.clone(),
             config.max_tokens,
             config.timeout_secs,
-        );
+        )?;
 
         Ok(Self {
             config,
@@ -64,7 +64,7 @@ impl AgentRunner {
             config.api_endpoint.clone(),
             config.max_tokens,
             config.timeout_secs,
-        );
+        )?;
 
         Ok(Self {
             config,

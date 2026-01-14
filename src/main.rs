@@ -89,54 +89,9 @@ enum Commands {
         country: Option<String>,
     },
 
-    /// Run RED/BLUE domestic faction conflict oracle
-    RedBlue,
-
-    /// Backtest RED/BLUE oracle against historical data
-    Backtest {
-        /// Cutoff date (YYYYMMDD) - predict from data before, validate against after
-        #[arg(short, long, default_value = "20250701")]
-        cutoff: String,
-
-        /// Days of training data before cutoff
-        #[arg(short = 'b', long, default_value = "14")]
-        days_before: usize,
-
-        /// Days of validation data after cutoff
-        #[arg(short = 'a', long, default_value = "14")]
-        days_after: usize,
-
-        /// Run series of backtests (number of windows)
-        #[arg(short, long)]
-        series: Option<usize>,
-
-        /// Gap between windows in series (days)
-        #[arg(short, long, default_value = "30")]
-        gap: usize,
-
-        /// Country code: US, CA (Canada), UK, DE (Germany), FR (France)
-        #[arg(long, default_value = "US")]
-        country: String,
-    },
-
     /// Prediction logging and resolution for Brier scoring
     #[command(subcommand)]
     Predict(PredictCommands),
-
-    /// Run permutation null test (L6 validation)
-    NullTest {
-        /// Days of GDELT data to fetch
-        #[arg(short, long, default_value = "7")]
-        days: usize,
-
-        /// Number of permutations (more = more accurate, slower)
-        #[arg(short, long, default_value = "1000")]
-        permutations: usize,
-
-        /// Country code: US, CA, UK, DE, FR
-        #[arg(long, default_value = "US")]
-        country: String,
-    },
 
     /// Run spectral sweep to test "Platonic residual gap" hypothesis
     SpectralSweep {
@@ -573,73 +528,7 @@ async fn main() -> Result<()> {
         Commands::Shepherd { days, country } => {
             fractal::shepherd::run_monitor(days, country.as_deref()).await
         }
-        Commands::RedBlue => fractal::redblue::run_monitor().await,
-        Commands::Backtest {
-            cutoff,
-            days_before,
-            days_after,
-            series,
-            gap,
-            country,
-        } => {
-            use fractal::redblue::{COUNTRY_CA, COUNTRY_DE, COUNTRY_FR, COUNTRY_UK, COUNTRY_US};
-
-            let country_code = match country.to_uppercase().as_str() {
-                "US" | "USA" => &COUNTRY_US,
-                "CA" | "CAN" | "CANADA" => &COUNTRY_CA,
-                "UK" | "GBR" | "GB" => &COUNTRY_UK,
-                "DE" | "DEU" | "GERMANY" => &COUNTRY_DE,
-                "FR" | "FRA" | "FRANCE" => &COUNTRY_FR,
-                _ => {
-                    println!("Unknown country '{}', using US", country);
-                    &COUNTRY_US
-                }
-            };
-
-            if let Some(num_windows) = series {
-                fractal::redblue::run_backtest_series_country(
-                    &cutoff,
-                    num_windows,
-                    gap,
-                    days_before,
-                    days_after,
-                    country_code,
-                )
-                .await?;
-            } else {
-                fractal::redblue::run_backtest_country(
-                    &cutoff,
-                    days_before,
-                    days_after,
-                    country_code,
-                )
-                .await?;
-            }
-            Ok(())
-        }
         Commands::Predict(cmd) => run_predict(cmd).await,
-        Commands::NullTest {
-            days,
-            permutations,
-            country,
-        } => {
-            use fractal::redblue::{COUNTRY_CA, COUNTRY_DE, COUNTRY_FR, COUNTRY_UK, COUNTRY_US};
-
-            let country_code = match country.to_uppercase().as_str() {
-                "US" | "USA" => &COUNTRY_US,
-                "CA" | "CAN" | "CANADA" => &COUNTRY_CA,
-                "UK" | "GBR" | "GB" => &COUNTRY_UK,
-                "DE" | "DEU" | "GERMANY" => &COUNTRY_DE,
-                "FR" | "FRA" | "FRANCE" => &COUNTRY_FR,
-                _ => {
-                    println!("Unknown country '{}', using US", country);
-                    &COUNTRY_US
-                }
-            };
-
-            fractal::redblue::run_null_test_country(days, permutations, country_code).await?;
-            Ok(())
-        }
         Commands::SpectralSweep {
             trials,
             grid,

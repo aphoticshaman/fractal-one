@@ -65,7 +65,8 @@ chrono = "0.4"
 glob = "0.3"
 
 # Nucleation - phase transition detection for conflict early warning
-nucleation = { git = "https://github.com/aphoticshaman/nucleation-wasm.git", features = ["serialize"] }
+# Pinned to specific commit for reproducible builds
+nucleation = { git = "https://github.com/aphoticshaman/nucleation-wasm.git", rev = "409e75b", features = ["serialize"] }
 
 # URL encoding for API queries
 urlencoding = "2.1"

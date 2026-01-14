@@ -2874,7 +2874,7 @@ dependencies = [
 [[package]]
 name = "nucleation"
 version = "0.2.0"
-source = "git+https://github.com/aphoticshaman/nucleation-wasm.git#409e75b42a0c791ae1926a83855117f8c99274c8"
+source = "git+https://github.com/aphoticshaman/nucleation-wasm.git?rev=409e75b#409e75b42a0c791ae1926a83855117f8c99274c8"
 dependencies = [
  "libm",
  "serde",
