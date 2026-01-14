@@ -1,11 +1,42 @@
 //! ═══════════════════════════════════════════════════════════════════════════════
 //! SHEPHERD — Conflict Early Warning via Nucleation Detection
 //! ═══════════════════════════════════════════════════════════════════════════════
-//! Fetches GDELT data and runs Shepherd Dynamics to detect pre-conflict signatures.
+//!
+//! Fetches GDELT data and runs Shepherd Dynamics to detect pre-conflict signatures
+//! using phase transition theory from statistical physics.
+//!
+//! ## Epistemic Limitations — READ BEFORE USE
+//!
+//! **This is experimental research software, not a validated forecasting system.**
+//!
+//! - **No proven predictive validity**: The nucleation model has not been validated
+//!   against historical conflict onset with proper out-of-sample testing.
+//! - **GDELT data quality**: GDELT is machine-coded from news, not ground truth.
+//!   Media coverage ≠ actual events. Biased toward English sources.
+//! - **Base rate problem**: Major conflicts are rare events. Any detector will
+//!   have either high false positive rates or miss most true positives.
+//! - **Feedback loops**: If predictions influence actions, they may self-fulfill
+//!   or self-negate, invalidating the model.
+//! - **Goldstein scale limitations**: The conflict/cooperation scale is from 1992
+//!   and may not capture modern conflict dynamics.
+//!
+//! ## Appropriate Use
+//!
+//! - Research into conflict dynamics and early warning methodology
+//! - Generating hypotheses for human analysts to investigate
+//! - Educational demonstrations of phase transition concepts
+//!
+//! ## Inappropriate Use
+//!
+//! - Automated decision-making about interventions
+//! - Investment decisions based on conflict predictions
+//! - Claims of reliable conflict forecasting
 //! ═══════════════════════════════════════════════════════════════════════════════
 
 use nucleation::{AlertLevel, ShepherdDynamics, VarianceConfig};
 use std::collections::HashMap;
+
+use crate::stats::float_cmp;
 
 /// GDELT event (minimal fields)
 #[derive(Debug, Clone)]
@@ -78,14 +109,12 @@ pub fn aggregate_to_observations(
     let mut country_events: HashMap<String, Vec<f64>> = HashMap::new();
 
     for event in events {
-        for country in [&event.actor1_country, &event.actor2_country] {
-            if let Some(c) = country {
-                if c.len() >= 2 {
-                    country_events
-                        .entry(c.clone())
-                        .or_default()
-                        .push(event.goldstein);
-                }
+        for c in [&event.actor1_country, &event.actor2_country].into_iter().flatten() {
+            if c.len() >= 2 {
+                country_events
+                    .entry(c.clone())
+                    .or_default()
+                    .push(event.goldstein);
             }
         }
     }
@@ -213,7 +242,7 @@ pub async fn run_monitor(days: usize, focus_country: Option<&str>) -> anyhow::Re
     println!();
 
     let mut sorted_potentials = potentials.clone();
-    sorted_potentials.sort_by(|a, b| b.phi.partial_cmp(&a.phi).unwrap());
+    sorted_potentials.sort_by(|a, b| float_cmp(&b.phi, &a.phi));
 
     println!(
         "{:<12} {:<12} {:>10} {:>12}",

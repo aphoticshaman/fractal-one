@@ -1,6 +1,25 @@
 //! ═══════════════════════════════════════════════════════════════════════════════
-//! FRACTAL_LENS — Visual Telemetry Display
+//! FRACTAL_LENS — Real-Time Visual Telemetry Display
 //! ═══════════════════════════════════════════════════════════════════════════════
+//!
+//! GPU-accelerated visualization of system telemetry. Renders entropy damping
+//! as rotating spiral patterns, with visual parameters driven by real-time
+//! metrics from shared memory.
+//!
+//! ## Limitations
+//!
+//! - **Requires GPU feature**: Must compile with `--features gpu`.
+//! - **Single window**: No multi-monitor or headless rendering support.
+//! - **Aesthetic only**: Visual mappings are artistic interpretations, not
+//!   rigorous data visualization. Don't make operational decisions from the
+//!   spiral patterns.
+//! - **Performance impact**: GPU rendering adds latency and power consumption.
+//!
+//! ## Dependencies
+//!
+//! - `wgpu` for GPU abstraction
+//! - `pixels` for framebuffer management
+//! - `winit` for window creation (version locked for pixels compatibility)
 
 use crate::neuro_link::Synapse;
 use pixels::{Pixels, SurfaceTexture};

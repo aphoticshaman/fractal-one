@@ -131,8 +131,7 @@ impl ControlGenerator {
     pub fn random_marker_control(&mut self, scores: &[f64], session_id: &str) -> Vec<Observation> {
         scores
             .iter()
-            .enumerate()
-            .map(|(_i, &score)| {
+            .map(|&score| {
                 let marker = self.marker_gen.generate_random();
                 Observation::new(
                     marker.id,

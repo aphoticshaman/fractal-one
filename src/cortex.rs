@@ -1,6 +1,17 @@
 //! ═══════════════════════════════════════════════════════════════════════════════
-//! CORTEX — Health Monitoring
+//! CORTEX — Real-Time Health Monitor
 //! ═══════════════════════════════════════════════════════════════════════════════
+//!
+//! Consumes telemetry pulses and displays system health status. Uses rolling
+//! jitter average over 10 samples to assess temporal stability.
+//!
+//! ## Limitations
+//!
+//! - **Display only**: No alerting, logging, or remediation actions.
+//! - **Fixed thresholds**: PERFECT (<0.05ms) and NOMINAL are hardcoded.
+//! - **10-sample window**: May miss transient spikes or react slowly to
+//!   sustained degradation.
+//! - **Single metric focus**: Jitter-centric; doesn't synthesize other signals.
 
 use crate::neuro_link::Synapse;
 use anyhow::Result;

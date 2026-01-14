@@ -1108,8 +1108,8 @@ fn generate_obfuscated_morse(
         for i in 0..duration {
             let t = i as f64 / sample_rate;
             // Smooth envelope with randomized attack/release
-            let attack = 50 + (ss.jitter(30).abs() as usize);
-            let release = 50 + (ss.jitter(30).abs() as usize);
+            let attack = 50 + (ss.jitter(30).unsigned_abs() as usize);
+            let release = 50 + (ss.jitter(30).unsigned_abs() as usize);
 
             let env = if i < attack {
                 (i as f64 / attack as f64).powi(2) // Squared for softer attack

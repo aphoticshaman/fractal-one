@@ -23,6 +23,7 @@ use serde::{Deserialize, Serialize};
 // Note: E and PI available if needed for differential entropy
 
 use super::mi::Observation;
+use crate::stats::float_cmp;
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // CHANNEL MODEL
@@ -691,7 +692,7 @@ impl CapacityCurve {
 
     pub fn sort_by_parameter(&mut self) {
         self.points
-            .sort_by(|a, b| a.parameter.partial_cmp(&b.parameter).unwrap());
+            .sort_by(|a, b| float_cmp(&a.parameter, &b.parameter));
     }
 }
 

@@ -1,6 +1,23 @@
 //! ═══════════════════════════════════════════════════════════════════════════════
 //! VOICE_BRIDGE — Tri-Model Proprioception Bridge
 //! ═══════════════════════════════════════════════════════════════════════════════
+//!
+//! Experimental interface that feeds telemetry data to language models, asking
+//! them to describe their "computational proprioception." Uses Claude (cloud),
+//! Ollama (local), and a third model for triangulation.
+//!
+//! ## Limitations & Epistemics
+//!
+//! - **Not actual proprioception**: LLMs don't have genuine self-awareness.
+//!   Responses are pattern-matched from training data, not introspection.
+//! - **Prompt injection risk**: System prompt asks for first-person responses,
+//!   which could be confused with genuine experience reports.
+//! - **Confirmation bias**: Humans reading outputs may over-interpret coherent
+//!   language as evidence of experience.
+//! - **Threshold heuristics**: Jitter (0.01ms), CPU delta (20%), intervals are
+//!   empirically chosen, not theoretically grounded.
+//! - **Research artifact**: This is exploratory code for investigating
+//!   AI self-modeling, not a production feature.
 
 use crate::neuro_link::{Pulse, Synapse};
 use anyhow::Result;
@@ -88,6 +105,8 @@ pub async fn run() -> Result<()> {
     let (tx, rx) = mpsc::channel::<String>();
     thread::spawn(move || {
         let stdin = io::stdin();
+        // Note: flatten on lines() is fine here - stdin errors are rare and non-recoverable
+        #[allow(clippy::lines_filter_map_ok)]
         for line in stdin.lock().lines().flatten() {
             if !line.trim().is_empty() {
                 let _ = tx.send(line);

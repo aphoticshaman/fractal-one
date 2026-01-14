@@ -287,7 +287,7 @@ impl PairedStatistics {
         // This is a simplified approximation; for production use a proper implementation
         let x = df as f64 / (df as f64 + t_abs * t_abs);
         let p = Self::incomplete_beta(df as f64 / 2.0, 0.5, x);
-        p.min(1.0).max(0.0)
+        p.clamp(0.0, 1.0)
     }
 
     /// Standard normal CDF approximation (Abramowitz and Stegun)

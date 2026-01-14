@@ -1,6 +1,17 @@
 //! ═══════════════════════════════════════════════════════════════════════════════
-//! COMMAND_MODULE — Interactive Control
+//! COMMAND_MODULE — Interactive Control Interface
 //! ═══════════════════════════════════════════════════════════════════════════════
+//!
+//! Provides a terminal-based interface for human-in-the-loop control of the
+//! cognitive system. Reads proposals from shared memory and allows y/n approval.
+//!
+//! ## Limitations
+//!
+//! - **Not a security boundary**: This is a convenience interface, not an access
+//!   control mechanism. The underlying shared memory can be accessed directly.
+//! - **Single operator**: No multi-user coordination or conflict resolution.
+//! - **No audit trail**: Approvals are not logged persistently.
+//! - **Blocking I/O**: Stdin reading blocks on the spawned thread.
 
 use crate::neuro_link::Synapse;
 use anyhow::Result;
@@ -75,7 +86,7 @@ fn execute_vetted_command(cmd: &str, synapse: &mut Synapse) {
     if cmd.contains("SHUTDOWN") {
         synapse.send_kill_signal();
     } else if cmd.contains("SET_SCHEDULER") {
-        if let Some(val) = cmd.split(':').last() {
+        if let Some(val) = cmd.split(':').next_back() {
             if let Ok(ms) = val.trim_matches(|c: char| !c.is_numeric()).parse::<u64>() {
                 synapse.set_target_interval(ms);
             }

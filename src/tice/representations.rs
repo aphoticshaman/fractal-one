@@ -7,6 +7,8 @@
 
 use std::collections::HashMap;
 
+use crate::stats::float_cmp;
+
 /// A representation: a way of framing the problem
 #[derive(Debug, Clone)]
 pub struct Representation {
@@ -142,7 +144,7 @@ impl RepresentationChurner {
             .representations
             .values()
             .filter(|r| r.active && Some(r.id) != self.current)
-            .max_by(|a, b| a.score.partial_cmp(&b.score).unwrap());
+            .max_by(|a, b| float_cmp(&a.score, &b.score));
 
         if let Some(rep) = best {
             self.current = Some(rep.id);

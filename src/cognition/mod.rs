@@ -28,6 +28,8 @@ pub use pattern::{
     Pattern, PatternConfig, PatternMatch, PatternRecognizer, PatternStrength, PatternType,
 };
 
+use crate::stats::float_cmp;
+
 use crate::time::TimePoint;
 
 /// Result from cognition layer
@@ -149,7 +151,7 @@ impl CognitionLayer {
         all_patterns.retain(|p| p.confidence >= self.config.pattern_threshold);
 
         // Sort by confidence
-        all_patterns.sort_by(|a, b| b.confidence.partial_cmp(&a.confidence).unwrap());
+        all_patterns.sort_by(|a, b| float_cmp(&b.confidence, &a.confidence));
 
         all_patterns
     }

@@ -270,7 +270,7 @@ impl TemporalAnchor {
                 .push(event.timestamp);
         }
 
-        for (_event_id, times) in &event_times {
+        for times in event_times.values() {
             if times.len() < 3 {
                 continue;
             }

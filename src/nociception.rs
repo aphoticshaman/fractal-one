@@ -23,6 +23,7 @@ use std::collections::VecDeque;
 use std::time::Instant;
 
 use crate::momentum_gate::{GateSignal, MomentumGate, MomentumGateConfig};
+use crate::stats::float_cmp_f32;
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // PAIN TYPES — What kind of damage is occurring
@@ -411,7 +412,7 @@ impl Nociceptor {
     pub fn worst_pain(&self) -> Option<&PainSignal> {
         self.active_pains
             .iter()
-            .max_by(|a, b| a.intensity.partial_cmp(&b.intensity).unwrap())
+            .max_by(|a, b| float_cmp_f32(&a.intensity, &b.intensity))
     }
 
     fn recommend_action(&self, signal: &PainSignal) -> PainAction {
@@ -537,7 +538,7 @@ impl DamageAccumulator {
             worst_location: self
                 .damage_map
                 .iter()
-                .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
+                .max_by(|a, b| float_cmp_f32(a.1, b.1))
                 .map(|(k, _)| k.clone()),
         }
     }

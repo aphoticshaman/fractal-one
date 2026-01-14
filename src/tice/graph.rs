@@ -9,6 +9,8 @@
 
 use std::collections::HashMap;
 
+use crate::stats::float_cmp;
+
 /// Unique identifier for a claim
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ClaimId(pub u64);
@@ -237,7 +239,7 @@ impl ConstraintGraph {
             .max_by(|a, b| {
                 let score_a = self.target_score(a);
                 let score_b = self.target_score(b);
-                score_a.partial_cmp(&score_b).unwrap()
+                float_cmp(&score_a, &score_b)
             })
             .map(|c| c.id)
     }

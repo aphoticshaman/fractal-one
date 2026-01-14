@@ -25,6 +25,8 @@
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 
+use crate::stats::float_cmp;
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // TRAJECTORY REPRESENTATION
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -815,7 +817,7 @@ impl EntityClassifier {
         // Find winner
         let (winner_template, winner_activation) = activations
             .iter()
-            .max_by(|(_, a1), (_, a2)| a1.partial_cmp(a2).unwrap())
+            .max_by(|(_, a1), (_, a2)| float_cmp(a1, a2))
             .map(|(t, a)| (*t, *a))
             .unwrap_or((FormTemplate::Unknown, 0.0));
 

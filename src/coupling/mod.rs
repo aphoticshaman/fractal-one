@@ -35,6 +35,7 @@
 //! ═══════════════════════════════════════════════════════════════════════════════
 
 use serde::{Deserialize, Serialize};
+use crate::stats::float_cmp;
 use std::collections::HashMap;
 
 // Submodules
@@ -417,7 +418,7 @@ impl FisherEstimator {
 
         if self.dim < 2 {
             // 1D: curvature is just the value
-            return fisher.get(0).and_then(|r| r.get(0)).copied().unwrap_or(0.0);
+            return fisher.first().and_then(|r| r.first()).copied().unwrap_or(0.0);
         }
 
         // For 2D: Gaussian curvature K = det(F) / (trace(F)²)
@@ -937,7 +938,7 @@ impl CouplingExperiment {
             strength_vs_distance.push((strength, mean_dist1, mean_dist2));
         }
 
-        strength_vs_distance.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+        strength_vs_distance.sort_by(|a, b| float_cmp(&a.0, &b.0));
 
         // Check for systematic relationship
         let correlation = if strength_vs_distance.len() >= 2 {
@@ -1316,18 +1317,18 @@ impl RealDataExperiment {
         let macro_metric = BasinMetric {
             fisher_curvature: macro_curvature,
             eigenvalues: self.fisher_macro.eigenvalue_spectrum(),
-            basins_visited: self.count_basin_visits(&self.adapter.macro_history()),
-            mean_return_time: self.compute_return_time(&self.adapter.macro_history()),
-            stability_index: self.compute_stability(&self.adapter.macro_history()),
+            basins_visited: self.count_basin_visits(self.adapter.macro_history()),
+            mean_return_time: self.compute_return_time(self.adapter.macro_history()),
+            stability_index: self.compute_stability(self.adapter.macro_history()),
             n_samples: self.fisher_macro.n_samples,
         };
 
         let micro_metric = BasinMetric {
             fisher_curvature: micro_curvature,
             eigenvalues: self.fisher_micro.eigenvalue_spectrum(),
-            basins_visited: self.count_basin_visits(&self.adapter.micro_history()),
-            mean_return_time: self.compute_return_time(&self.adapter.micro_history()),
-            stability_index: self.compute_stability(&self.adapter.micro_history()),
+            basins_visited: self.count_basin_visits(self.adapter.micro_history()),
+            mean_return_time: self.compute_return_time(self.adapter.micro_history()),
+            stability_index: self.compute_stability(self.adapter.micro_history()),
             n_samples: self.fisher_micro.n_samples,
         };
 

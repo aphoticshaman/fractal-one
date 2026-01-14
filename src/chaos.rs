@@ -99,8 +99,8 @@ impl ChaosScenario {
 
 fn small_noise(step: usize) -> f64 {
     // Deterministic pseudo-noise for reproducibility
-    let x = (step as f64 * 0.1).sin() * 0.1;
-    x
+    
+    (step as f64 * 0.1).sin() * 0.1
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -164,7 +164,7 @@ impl ChaosHarness {
         // Warmup phase: establish baseline
         for step in 0..self.warmup_steps {
             let value = scenario.baseline_value + small_noise(step) * scenario.baseline_std;
-            let obs = Observation::new(scenario.target_key.clone(), ObsValue::exact(value));
+            let obs = Observation::new(scenario.target_key, ObsValue::exact(value));
             sensorium.ingest(obs);
             let _ = sensorium.integrate();
         }
@@ -176,7 +176,7 @@ impl ChaosHarness {
 
         for step in 0..self.steps_per_scenario {
             let value = scenario.generate_value(step, scenario.baseline_std);
-            let obs = Observation::new(scenario.target_key.clone(), ObsValue::exact(value));
+            let obs = Observation::new(scenario.target_key, ObsValue::exact(value));
             sensorium.ingest(obs);
             let result = sensorium.integrate();
 

@@ -353,11 +353,11 @@ fn radial_profile(power: &[f64], n: usize, n_bins: usize) -> Vec<f64> {
 
     let cy = (n - 1) as f64 / 2.0;
     let cx = cy;
-    let max_r = ((cy * cy + cx * cx) as f64).sqrt();
+    let max_r = (cy * cy + cx * cx).sqrt();
 
     for y in 0..n {
         for x in 0..n {
-            let r = (((y as f64 - cy).powi(2) + (x as f64 - cx).powi(2)) as f64).sqrt();
+            let r = ((y as f64 - cy).powi(2) + (x as f64 - cx).powi(2)).sqrt();
             let r_norm = r / max_r;
             let bin = ((r_norm * n_bins as f64) as usize).min(n_bins - 1);
             prof[bin] += power[y * n + x];
@@ -507,8 +507,8 @@ fn fit_asymptote(e_vals: &[f64], y_vals: &[f64]) -> FitResult {
 
         // Try update
         let a_new = (a + da).max(0.0);
-        let alpha_new = (alpha + dalpha).max(0.0).min(5.0);
-        let c_new = (c + dc).max(0.0).min(1.0);
+        let alpha_new = (alpha + dalpha).clamp(0.0, 5.0);
+        let c_new = (c + dc).clamp(0.0, 1.0);
 
         // Compute new SSE
         let sse_old: f64 = residuals.iter().map(|r| r * r).sum();

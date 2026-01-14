@@ -11,6 +11,8 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+use crate::stats::float_cmp;
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // OBSERVATION PAIR
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -59,8 +61,10 @@ pub struct MIEstimator {
 
 /// Null hypothesis generation mode for permutation tests
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Default)]
 pub enum NullMode {
     /// Shuffle injection labels (default, breaks marker-score association)
+    #[default]
     LabelShuffle,
     /// Circular time-shift of scores (preserves autocorrelation)
     TimeShift,
@@ -68,11 +72,6 @@ pub enum NullMode {
     BlockPermutation(usize),
 }
 
-impl Default for NullMode {
-    fn default() -> Self {
-        Self::LabelShuffle
-    }
-}
 
 impl MIEstimator {
     pub fn new(seed: u64) -> Self {
@@ -261,7 +260,7 @@ impl MIEstimator {
         }
 
         // Sort null distribution
-        null_distribution.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        null_distribution.sort_by(float_cmp);
 
         // Compute p-value (one-tailed, upper)
         let count_extreme = null_distribution.iter().filter(|&&x| x >= observed).count();
@@ -350,7 +349,7 @@ impl MIEstimator {
         }
 
         // Sort and get percentiles
-        bootstrap_stats.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        bootstrap_stats.sort_by(float_cmp);
 
         let lower_idx = ((alpha / 2.0) * bootstrap_stats.len() as f64) as usize;
         let upper_idx = ((1.0 - alpha / 2.0) * bootstrap_stats.len() as f64) as usize;

@@ -10,6 +10,8 @@ use super::marker::Marker;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+use crate::stats::float_cmp;
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // PROBE OUTPUT ANALYSIS
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -72,7 +74,7 @@ impl ProbeOutput {
     pub fn top_marker(&self) -> Option<(&String, &f64)> {
         self.marker_scores
             .iter()
-            .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
+            .max_by(|a, b| float_cmp(a.1, b.1))
     }
 }
 
@@ -280,7 +282,7 @@ impl ProbeSession {
     pub fn max_score(&self) -> Option<(&String, &f64)> {
         self.aggregate_scores
             .iter()
-            .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
+            .max_by(|a, b| float_cmp(a.1, b.1))
     }
 }
 

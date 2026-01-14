@@ -12,8 +12,10 @@ use std::collections::HashMap;
 
 /// Trust level for an operator
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Default)]
 pub enum OperatorTrust {
     /// Unknown operator - lowest trust
+    #[default]
     Unknown,
     /// First-time identified
     New,
@@ -25,16 +27,13 @@ pub enum OperatorTrust {
     Trusted,
 }
 
-impl Default for OperatorTrust {
-    fn default() -> Self {
-        Self::Unknown
-    }
-}
 
 /// Authentication level
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Default)]
 pub enum AuthenticationLevel {
     /// No authentication
+    #[default]
     None,
     /// Session-based
     Session,
@@ -46,11 +45,6 @@ pub enum AuthenticationLevel {
     MultiFactor,
 }
 
-impl Default for AuthenticationLevel {
-    fn default() -> Self {
-        Self::None
-    }
-}
 
 /// Fingerprint for identifying operators
 #[derive(Debug, Clone)]

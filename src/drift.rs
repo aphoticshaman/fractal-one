@@ -8,6 +8,7 @@
 //! current state against baseline to detect environmental drift.
 //! ═══════════════════════════════════════════════════════════════════════════════
 
+use crate::stats::float_cmp;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
@@ -51,7 +52,7 @@ impl MetricStats {
         let std_dev = variance.sqrt();
 
         let mut sorted = samples.to_vec();
-        sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        sorted.sort_by(float_cmp);
 
         let percentile = |p: f64| -> f64 {
             let idx = (p * (n - 1) as f64) as usize;
@@ -149,7 +150,7 @@ impl DriftResult {
             1.0
         };
         // Variance confidence: lower CV = higher confidence
-        let variance_conf = (1.0 - (cpu_cv + mem_cv) / 2.0).max(0.0).min(1.0);
+        let variance_conf = (1.0 - (cpu_cv + mem_cv) / 2.0).clamp(0.0, 1.0);
 
         // Factor 3: Metric agreement (if all metrics show similar drift, more confident)
         let drifts = [cpu, mem, disk, proc];
@@ -361,7 +362,7 @@ pub fn save_baseline(baseline: &SystemBaseline) -> std::io::Result<PathBuf> {
     }
 
     let json = serde_json::to_string_pretty(baseline)
-        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+        .map_err(std::io::Error::other)?;
     fs::write(&path, json)?;
 
     Ok(path)

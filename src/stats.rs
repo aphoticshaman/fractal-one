@@ -8,9 +8,56 @@
 //! - Change-point detection for regime shifts
 //!
 //! These are the building blocks for all sensorium estimators.
+//!
+//! ## Limitations
+//!
+//! These primitives assume stationary or slowly-varying processes. They will
+//! produce misleading results when:
+//! - Underlying distributions are multimodal
+//! - Data has heavy tails (use robust variants)
+//! - Regime changes are abrupt (CUSUM has detection lag)
+//! - Sample sizes are small (< 30 for parametric methods)
+//!
+//! Always validate assumptions before trusting outputs.
 //! ═══════════════════════════════════════════════════════════════════════════════
 
 use std::collections::VecDeque;
+use std::cmp::Ordering;
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// FLOAT COMPARISON — Safe sorting for f64
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/// Compare two f64 values for sorting, handling NaN safely.
+///
+/// NaN values are treated as equal to themselves and greater than all other values.
+/// This ensures deterministic sorting even with malformed data.
+#[inline]
+pub fn float_cmp(a: &f64, b: &f64) -> Ordering {
+    a.partial_cmp(b).unwrap_or(Ordering::Equal)
+}
+
+/// Compare two f32 values for sorting, handling NaN safely.
+///
+/// NaN values are treated as equal to themselves and greater than all other values.
+/// This ensures deterministic sorting even with malformed data.
+#[inline]
+pub fn float_cmp_f32(a: &f32, b: &f32) -> Ordering {
+    a.partial_cmp(b).unwrap_or(Ordering::Equal)
+}
+
+/// Compare two f64 values, NaN-last ordering for sorting.
+///
+/// NaN values sort to the end, non-NaN values sort normally.
+#[inline]
+pub fn float_cmp_nan_last(a: &f64, b: &f64) -> Ordering {
+    match (a.is_nan(), b.is_nan()) {
+        (true, true) => Ordering::Equal,
+        (true, false) => Ordering::Greater,
+        (false, true) => Ordering::Less,
+        (false, false) => a.partial_cmp(b).unwrap_or(Ordering::Equal),
+    }
+}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // EWMA — Exponentially Weighted Moving Average
@@ -148,7 +195,7 @@ impl RobustStats {
         }
 
         let mut sorted: Vec<f64> = self.samples.iter().copied().collect();
-        sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        sorted.sort_by(float_cmp);
 
         let mid = sorted.len() / 2;
         let median = if sorted.len() % 2 == 0 {
@@ -175,7 +222,7 @@ impl RobustStats {
         let median = self.median()?;
 
         let mut deviations: Vec<f64> = self.samples.iter().map(|&x| (x - median).abs()).collect();
-        deviations.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        deviations.sort_by(float_cmp);
 
         let mid = deviations.len() / 2;
         let mad = if deviations.len() % 2 == 0 {

@@ -1,6 +1,18 @@
 //! ═══════════════════════════════════════════════════════════════════════════════
-//! MEMORY_SINK — Telemetry Persistence
+//! MEMORY_SINK — Telemetry Persistence Layer
 //! ═══════════════════════════════════════════════════════════════════════════════
+//!
+//! Consumes telemetry pulses from shared memory and persists them to disk.
+//! Buffers entries and flushes when jitter falls below laminar threshold,
+//! indicating stable operation suitable for I/O.
+//!
+//! ## Limitations
+//!
+//! - **Best-effort persistence**: Buffer may be lost on crash before flush.
+//! - **No compression**: Raw JSON appends grow unbounded.
+//! - **Single consumer**: Only one memory sink should run per synapse.
+//! - **Laminar threshold heuristic**: The 0.005 threshold is empirically tuned,
+//!   not theoretically derived. May need adjustment for different workloads.
 
 use crate::neuro_link::Synapse;
 use anyhow::Result;

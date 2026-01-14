@@ -1,6 +1,22 @@
 //! ═══════════════════════════════════════════════════════════════════════════════
-//! ENTROPY_STORM — Chaos Generator for Stress Testing
+//! ENTROPY_STORM — Synthetic Load Generator for Stress Testing
 //! ═══════════════════════════════════════════════════════════════════════════════
+//!
+//! Generates controlled CPU and memory stress to test proprioceptive monitoring
+//! under load. Spawns multiple threads that allocate large arrays and perform
+//! pseudo-random memory access patterns.
+//!
+//! ## Limitations
+//!
+//! - **Not production safe**: Will consume 400MB+ RAM and saturate CPU cores.
+//! - **Synthetic load**: Memory access patterns don't match real workloads.
+//! - **No throttling**: Runs at maximum intensity until killed.
+//! - **Testing only**: Use in isolated environments, not production systems.
+//!
+//! ## Usage
+//!
+//! Requires `gpu` feature flag. Intended for validating that monitoring
+//! systems correctly detect and respond to resource exhaustion.
 
 use crate::neuro_link::Synapse;
 use std::{

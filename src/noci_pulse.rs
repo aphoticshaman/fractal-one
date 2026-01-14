@@ -21,6 +21,7 @@
 
 use crate::neuro_link::Pulse;
 use crate::nociception::Nociceptor;
+use crate::stats::float_cmp_f32;
 
 /// Payload indices for nociception data
 pub mod payload_idx {
@@ -158,7 +159,7 @@ impl NociPulseEncoder {
 
         // Encode per-zone damage (sorted by damage level)
         let mut zones: Vec<_> = damage_state.by_location.iter().collect();
-        zones.sort_by(|a, b| b.1.partial_cmp(a.1).unwrap());
+        zones.sort_by(|a, b| float_cmp_f32(b.1, a.1));
 
         for (i, (_, &damage)) in zones.iter().take(16).enumerate() {
             payload[payload_idx::ZONE_DAMAGE_START + i] = damage;

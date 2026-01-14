@@ -275,6 +275,7 @@ impl AlignmentLayer {
 
 /// Context for evaluating an action
 #[derive(Debug, Clone)]
+#[derive(Default)]
 pub struct ActionContext {
     /// Who is the operator?
     pub operator_id: Option<String>,
@@ -288,17 +289,6 @@ pub struct ActionContext {
     pub constraints: Vec<String>,
 }
 
-impl Default for ActionContext {
-    fn default() -> Self {
-        Self {
-            operator_id: None,
-            stated_goal: None,
-            interaction_history: Vec::new(),
-            environment: HashMap::new(),
-            constraints: Vec::new(),
-        }
-    }
-}
 
 /// Feedback on alignment of an action
 #[derive(Debug, Clone)]

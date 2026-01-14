@@ -166,7 +166,7 @@ impl AbstractionHierarchy {
         self.concepts.insert(id.clone(), node);
         self.level_index
             .entry(level)
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(id.clone());
 
         // Update parent-child relations

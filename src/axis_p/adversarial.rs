@@ -465,9 +465,7 @@ impl CMAESState {
 
         // Update sigma
         let cn = self.cs / self.damps;
-        self.sigma *= ((cn * (ps_norm / expected_norm - 1.0)).exp())
-            .min(2.0)
-            .max(0.5);
+        self.sigma *= ((cn * (ps_norm / expected_norm - 1.0)).exp()).clamp(0.5, 2.0);
 
         self.generation += 1;
     }

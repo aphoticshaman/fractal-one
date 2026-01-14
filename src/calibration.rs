@@ -1,7 +1,32 @@
-//! Epistemic Calibration Harness
+//! ═══════════════════════════════════════════════════════════════════════════════
+//! CALIBRATION — Epistemic Calibration Harness
+//! ═══════════════════════════════════════════════════════════════════════════════
 //!
-//! Detects when confidence outruns accuracy.
-//! Produces calibration plots, not narratives.
+//! Tests whether a predictor's confidence matches its actual accuracy.
+//! A well-calibrated predictor saying "70% confident" should be right ~70% of
+//! the time across many predictions.
+//!
+//! ## What This Measures
+//!
+//! - **Overconfidence**: Confidence systematically higher than accuracy
+//! - **Underconfidence**: Confidence systematically lower than accuracy
+//! - **Calibration error**: Average absolute deviation from perfect calibration
+//!
+//! ## Limitations
+//!
+//! - **Binary tasks only**: Real predictions are often multi-class or continuous.
+//! - **Synthetic domains**: Test tasks (comparison, primality, pattern) may not
+//!   transfer to real-world prediction domains.
+//! - **Sample size requirements**: Reliable calibration curves need ~100+ samples
+//!   per confidence bin.
+//! - **Distribution shift**: Calibration on synthetic tasks doesn't guarantee
+//!   calibration on deployment tasks.
+//!
+//! ## Interpretation
+//!
+//! - Calibration ≠ Accuracy. A predictor can be well-calibrated but inaccurate.
+//! - Use calibration plots, not single metrics. ECE can hide important patterns.
+//! - Recalibrate periodically. Calibration degrades under distribution shift.
 
 use std::collections::HashMap;
 

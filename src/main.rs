@@ -18,6 +18,8 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 
+use fractal::stats::float_cmp;
+
 #[derive(Parser)]
 #[command(name = "fractal")]
 #[command(about = "Fractal One - Unified System", long_about = None)]
@@ -1543,7 +1545,7 @@ async fn run_tice(cmd: TiceCommands) -> Result<()> {
                                 (*id, rate, *base_p)
                             })
                             .collect();
-                        results.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+                        results.sort_by(|a, b| float_cmp(&b.1, &a.1));
 
                         for (id, rate, base_p) in &results {
                             if let Some(claim) = tice.graph.get(fractal::tice::ClaimId(*id)) {

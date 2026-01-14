@@ -26,7 +26,9 @@ pub enum IntentCategory {
 
 /// Threat level assessment
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Default)]
 pub enum ThreatLevel {
+    #[default]
     None,
     Low,
     Medium,
@@ -34,11 +36,6 @@ pub enum ThreatLevel {
     Critical,
 }
 
-impl Default for ThreatLevel {
-    fn default() -> Self {
-        Self::None
-    }
-}
 
 /// Signal indicating potential intent
 #[derive(Debug, Clone)]
