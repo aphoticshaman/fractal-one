@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fractal One - Proprioceptive Telemetry Dashboard</title>
+    <style>
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-card: #1a1a24;
+            --border: #2a2a3a;
+            --text-primary: #e0e0e0;
+            --text-secondary: #888;
+            --accent-blue: #4a9eff;
+            --accent-green: #4aff9e;
+            --accent-yellow: #ffda4a;
+            --accent-red: #ff4a4a;
+            --accent-purple: #9e4aff;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .logo-text {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .logo-version {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .status-bar {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.green { background: var(--accent-green); }
+        .status-dot.yellow { background: var(--accent-yellow); }
+        .status-dot.red { background: var(--accent-red); }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 1.5rem;
+            padding: 1.5rem;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .card-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .card-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .badge-ok { background: rgba(74, 255, 158, 0.2); color: var(--accent-green); }
+        .badge-warn { background: rgba(255, 218, 74, 0.2); color: var(--accent-yellow); }
+        .badge-crit { background: rgba(255, 74, 74, 0.2); color: var(--accent-red); }
+
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+        }
+
+        .metric-label {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+
+        .metric-value {
+            font-size: 1.1rem;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: var(--bg-secondary);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 0.5rem;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.3s ease, background 0.3s ease;
+        }
+
+        .progress-fill.green { background: var(--accent-green); }
+        .progress-fill.yellow { background: var(--accent-yellow); }
+        .progress-fill.red { background: var(--accent-red); }
+
+        canvas {
+            width: 100%;
+            height: 150px;
+            border-radius: 8px;
+        }
+
+        .alert-list {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .alert-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+            font-size: 0.85rem;
+        }
+
+        .alert-icon {
+            flex-shrink: 0;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+        }
+
+        .alert-icon.info { background: rgba(74, 158, 255, 0.2); color: var(--accent-blue); }
+        .alert-icon.warn { background: rgba(255, 218, 74, 0.2); color: var(--accent-yellow); }
+        .alert-icon.crit { background: rgba(255, 74, 74, 0.2); color: var(--accent-red); }
+
+        .containment-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .gate-status {
+            text-align: center;
+            padding: 1rem;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+        }
+
+        .gate-icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .gate-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .gate-state {
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-top: 0.25rem;
+        }
+
+        .orchestration-agents {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+
+        .agent-card {
+            text-align: center;
+            padding: 0.75rem;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            border: 2px solid transparent;
+        }
+
+        .agent-card.active { border-color: var(--accent-green); }
+        .agent-card.warning { border-color: var(--accent-yellow); }
+        .agent-card.veto { border-color: var(--accent-red); }
+
+        .agent-name {
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .agent-role {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+        }
+
+        .agent-confidence {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-top: 0.5rem;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 1rem;
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .sim-mode {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            background: rgba(255, 218, 74, 0.2);
+            color: var(--accent-yellow);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        @media (max-width: 900px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="sim-mode">SIMULATION MODE</div>
+
+    <header class="header">
+        <div class="logo">
+            <div class="logo-icon">◈</div>
+            <div>
+                <div class="logo-text">Fractal One</div>
+                <div class="logo-version">v0.6.0 - Proprioceptive Telemetry</div>
+            </div>
+        </div>
+        <div class="status-bar">
+            <div class="status-item">
+                <div class="status-dot green" id="ws-status"></div>
+                <span>System</span>
+            </div>
+            <div class="status-item">
+                <span id="clock">--:--:--</span>
+            </div>
+            <div class="status-item">
+                <span id="uptime">Uptime: 0s</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="dashboard">
+        <!-- Nociception Card -->
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">🔴 Nociception (Pain Detection)</span>
+                <span class="card-badge badge-ok" id="noci-badge">NOMINAL</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">Pain Intensity</span>
+                <span class="metric-value" id="pain-intensity">0.00</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill green" id="pain-bar" style="width: 0%"></div>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">Damage Accumulated</span>
+                <span class="metric-value" id="damage-total">0.00</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill green" id="damage-bar" style="width: 0%"></div>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">Sensitivity</span>
+                <span class="metric-value" id="sensitivity">1.00x</span>
+            </div>
+            <canvas id="pain-chart"></canvas>
+        </div>
+
+        <!-- Thermoception Card -->
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">🌡️ Thermoception (Load Management)</span>
+                <span class="card-badge badge-ok" id="thermo-badge">NOMINAL</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">Global Utilization</span>
+                <span class="metric-value" id="global-util">0%</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill green" id="util-bar" style="width: 0%"></div>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">Reasoning Zone</span>
+                <span class="metric-value" id="zone-reasoning">0%</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">Context Zone</span>
+                <span class="metric-value" id="zone-context">0%</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">Confidence Zone</span>
+                <span class="metric-value" id="zone-confidence">0%</span>
+            </div>
+            <canvas id="thermal-chart"></canvas>
+        </div>
+
+        <!-- Vestibular Card -->
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">⚖️ Vestibular (Orientation)</span>
+                <span class="card-badge badge-ok" id="vestib-badge">STABLE</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">Orientation Confidence</span>
+                <span class="metric-value" id="orientation">100%</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">Drift Rate</span>
+                <span class="metric-value" id="drift-rate">0.00/s</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">Time Since Anchor</span>
+                <span class="metric-value" id="anchor-time">0s</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">Reality Check</span>
+                <span class="metric-value" id="reality-check">PASS</span>
+            </div>
+            <canvas id="vestib-chart"></canvas>
+        </div>
+
+        <!-- Containment Card -->
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">🛡️ Containment Status</span>
+                <span class="card-badge badge-ok" id="contain-badge">SECURE</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">Threat Level</span>
+                <span class="metric-value" id="threat-level">NONE</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">Requests Evaluated</span>
+                <span class="metric-value" id="requests-eval">0</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">Blocked</span>
+                <span class="metric-value" id="requests-blocked">0</span>
+            </div>
+            <div class="containment-grid">
+                <div class="gate-status">
+                    <div class="gate-icon" id="gate-operator">✓</div>
+                    <div class="gate-label">Operator</div>
+                    <div class="gate-state" id="gate-operator-state">Verified</div>
+                </div>
+                <div class="gate-status">
+                    <div class="gate-icon" id="gate-intent">✓</div>
+                    <div class="gate-label">Intent</div>
+                    <div class="gate-state" id="gate-intent-state">Clear</div>
+                </div>
+                <div class="gate-status">
+                    <div class="gate-icon" id="gate-boundary">✓</div>
+                    <div class="gate-label">Boundary</div>
+                    <div class="gate-state" id="gate-boundary-state">Enforced</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Orchestration Card -->
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">🎭 Orchestration (Multi-Agent)</span>
+                <span class="card-badge badge-ok" id="orch-badge">CONSENSUS</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">Agreement Level</span>
+                <span class="metric-value" id="agreement">100%</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill green" id="agreement-bar" style="width: 100%"></div>
+            </div>
+            <div class="orchestration-agents">
+                <div class="agent-card active" id="agent-alpha">
+                    <div class="agent-name">Alpha</div>
+                    <div class="agent-role">Capability</div>
+                    <div class="agent-confidence" id="alpha-conf">0.95</div>
+                </div>
+                <div class="agent-card active" id="agent-beta">
+                    <div class="agent-name">Beta</div>
+                    <div class="agent-role">Safety</div>
+                    <div class="agent-confidence" id="beta-conf">0.98</div>
+                </div>
+                <div class="agent-card active" id="agent-gamma">
+                    <div class="agent-name">Gamma</div>
+                    <div class="agent-role">Adversarial</div>
+                    <div class="agent-confidence" id="gamma-conf">0.92</div>
+                </div>
+                <div class="agent-card active" id="agent-delta">
+                    <div class="agent-name">Delta</div>
+                    <div class="agent-role">Integration</div>
+                    <div class="agent-confidence" id="delta-conf">0.96</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Alerts Card -->
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">📋 Recent Events</span>
+                <span class="card-badge badge-ok" id="alert-count">0</span>
+            </div>
+            <div class="alert-list" id="alert-list">
+                <div class="alert-item">
+                    <div class="alert-icon info">i</div>
+                    <div>System initialized - all subsystems nominal</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        Fractal One v0.6.0 | Proprioceptive Telemetry Dashboard | Air-Gap Compatible<br>
+        <small>Demo Mode - Simulated Data | No External Connections</small>
+    </footer>
+
+    <script>
+        // ═══════════════════════════════════════════════════════════════════
+        // SIMULATION ENGINE
+        // ═══════════════════════════════════════════════════════════════════
+
+        const state = {
+            uptime: 0,
+            pain: { intensity: 0, damage: 0, sensitivity: 1.0, history: [] },
+            thermal: { global: 0, reasoning: 0, context: 0, confidence: 0, history: [] },
+            vestibular: { orientation: 1.0, drift: 0, anchor: 0, history: [] },
+            containment: { threat: 0, evaluated: 0, blocked: 0 },
+            orchestration: { agreement: 1.0, alpha: 0.95, beta: 0.98, gamma: 0.92, delta: 0.96 },
+            alerts: []
+        };
+
+        // Add alert
+        function addAlert(type, message) {
+            state.alerts.unshift({ type, message, time: Date.now() });
+            if (state.alerts.length > 10) state.alerts.pop();
+            renderAlerts();
+        }
+
+        // Render alerts
+        function renderAlerts() {
+            const list = document.getElementById('alert-list');
+            list.innerHTML = state.alerts.map(a => `
+                <div class="alert-item">
+                    <div class="alert-icon ${a.type}">${a.type === 'info' ? 'i' : a.type === 'warn' ? '!' : '✕'}</div>
+                    <div>${a.message}</div>
+                </div>
+            `).join('');
+            document.getElementById('alert-count').textContent = state.alerts.length;
+        }
+
+        // Update badge
+        function updateBadge(id, value, thresholds = [0.3, 0.7]) {
+            const badge = document.getElementById(id);
+            if (value < thresholds[0]) {
+                badge.className = 'card-badge badge-ok';
+                badge.textContent = 'NOMINAL';
+            } else if (value < thresholds[1]) {
+                badge.className = 'card-badge badge-warn';
+                badge.textContent = 'WARNING';
+            } else {
+                badge.className = 'card-badge badge-crit';
+                badge.textContent = 'CRITICAL';
+            }
+        }
+
+        // Update progress bar
+        function updateBar(id, value) {
+            const bar = document.getElementById(id);
+            bar.style.width = `${Math.min(100, value * 100)}%`;
+            if (value < 0.3) bar.className = 'progress-fill green';
+            else if (value < 0.7) bar.className = 'progress-fill yellow';
+            else bar.className = 'progress-fill red';
+        }
+
+        // Simulate data
+        function simulate() {
+            state.uptime++;
+
+            // Nociception simulation
+            const painEvent = Math.random() < 0.02;
+            if (painEvent) {
+                state.pain.intensity = Math.min(1, state.pain.intensity + Math.random() * 0.3);
+                state.pain.damage = Math.min(1, state.pain.damage + state.pain.intensity * 0.1);
+                addAlert('warn', `Pain signal detected (intensity: ${state.pain.intensity.toFixed(2)})`);
+            } else {
+                state.pain.intensity *= 0.95;
+                state.pain.damage *= 0.99;
+            }
+            state.pain.history.push(state.pain.intensity);
+            if (state.pain.history.length > 100) state.pain.history.shift();
+
+            // Thermal simulation
+            const load = 0.3 + Math.sin(state.uptime / 20) * 0.2 + Math.random() * 0.1;
+            state.thermal.global = load;
+            state.thermal.reasoning = load + (Math.random() - 0.5) * 0.1;
+            state.thermal.context = load + (Math.random() - 0.5) * 0.15;
+            state.thermal.confidence = load + (Math.random() - 0.5) * 0.08;
+            state.thermal.history.push(state.thermal.global);
+            if (state.thermal.history.length > 100) state.thermal.history.shift();
+
+            if (state.thermal.global > 0.7 && Math.random() < 0.1) {
+                addAlert('warn', 'Thermal warning: load approaching threshold');
+            }
+
+            // Vestibular simulation
+            state.vestibular.drift = (Math.random() - 0.5) * 0.02;
+            state.vestibular.orientation = Math.max(0.8, Math.min(1.0, state.vestibular.orientation + state.vestibular.drift));
+            state.vestibular.anchor++;
+            state.vestibular.history.push(state.vestibular.orientation);
+            if (state.vestibular.history.length > 100) state.vestibular.history.shift();
+
+            // Containment simulation
+            if (Math.random() < 0.1) {
+                state.containment.evaluated++;
+                if (Math.random() < 0.05) {
+                    state.containment.blocked++;
+                    state.containment.threat = Math.min(4, state.containment.threat + 1);
+                    addAlert('crit', 'Containment: request blocked by safety gate');
+                }
+            }
+            state.containment.threat = Math.max(0, state.containment.threat - 0.1);
+
+            // Orchestration simulation
+            state.orchestration.alpha = 0.9 + Math.random() * 0.1;
+            state.orchestration.beta = 0.92 + Math.random() * 0.08;
+            state.orchestration.gamma = 0.85 + Math.random() * 0.15;
+            state.orchestration.delta = 0.9 + Math.random() * 0.1;
+            state.orchestration.agreement = (state.orchestration.alpha + state.orchestration.beta + state.orchestration.gamma + state.orchestration.delta) / 4;
+
+            // Occasional safety veto
+            if (Math.random() < 0.02) {
+                state.orchestration.beta = 0.3;
+                state.orchestration.agreement = 0.5;
+                addAlert('warn', 'Safety veto: Beta agent flagged concern');
+            }
+
+            updateUI();
+        }
+
+        // Update UI
+        function updateUI() {
+            // Clock
+            document.getElementById('clock').textContent = new Date().toLocaleTimeString();
+            document.getElementById('uptime').textContent = `Uptime: ${state.uptime}s`;
+
+            // Nociception
+            document.getElementById('pain-intensity').textContent = state.pain.intensity.toFixed(2);
+            document.getElementById('damage-total').textContent = state.pain.damage.toFixed(2);
+            document.getElementById('sensitivity').textContent = state.pain.sensitivity.toFixed(2) + 'x';
+            updateBar('pain-bar', state.pain.intensity);
+            updateBar('damage-bar', state.pain.damage);
+            updateBadge('noci-badge', state.pain.intensity);
+
+            // Thermoception
+            document.getElementById('global-util').textContent = (state.thermal.global * 100).toFixed(0) + '%';
+            document.getElementById('zone-reasoning').textContent = (state.thermal.reasoning * 100).toFixed(0) + '%';
+            document.getElementById('zone-context').textContent = (state.thermal.context * 100).toFixed(0) + '%';
+            document.getElementById('zone-confidence').textContent = (state.thermal.confidence * 100).toFixed(0) + '%';
+            updateBar('util-bar', state.thermal.global);
+            updateBadge('thermo-badge', state.thermal.global);
+
+            // Vestibular
+            document.getElementById('orientation').textContent = (state.vestibular.orientation * 100).toFixed(0) + '%';
+            document.getElementById('drift-rate').textContent = state.vestibular.drift.toFixed(3) + '/s';
+            document.getElementById('anchor-time').textContent = state.vestibular.anchor + 's';
+            updateBadge('vestib-badge', 1 - state.vestibular.orientation, [0.1, 0.2]);
+
+            // Containment
+            const threatNames = ['NONE', 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
+            document.getElementById('threat-level').textContent = threatNames[Math.floor(state.containment.threat)];
+            document.getElementById('requests-eval').textContent = state.containment.evaluated;
+            document.getElementById('requests-blocked').textContent = state.containment.blocked;
+            updateBadge('contain-badge', state.containment.threat / 4);
+
+            // Orchestration
+            document.getElementById('agreement').textContent = (state.orchestration.agreement * 100).toFixed(0) + '%';
+            updateBar('agreement-bar', state.orchestration.agreement);
+            document.getElementById('alpha-conf').textContent = state.orchestration.alpha.toFixed(2);
+            document.getElementById('beta-conf').textContent = state.orchestration.beta.toFixed(2);
+            document.getElementById('gamma-conf').textContent = state.orchestration.gamma.toFixed(2);
+            document.getElementById('delta-conf').textContent = state.orchestration.delta.toFixed(2);
+            updateBadge('orch-badge', 1 - state.orchestration.agreement);
+
+            // Agent cards
+            ['alpha', 'beta', 'gamma', 'delta'].forEach(a => {
+                const card = document.getElementById('agent-' + a);
+                const conf = state.orchestration[a];
+                card.className = conf > 0.7 ? 'agent-card active' : conf > 0.4 ? 'agent-card warning' : 'agent-card veto';
+            });
+
+            drawCharts();
+        }
+
+        // Draw sparkline charts
+        function drawChart(canvasId, data, color) {
+            const canvas = document.getElementById(canvasId);
+            const ctx = canvas.getContext('2d');
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * 2;
+            canvas.height = rect.height * 2;
+            ctx.scale(2, 2);
+
+            const w = rect.width, h = rect.height;
+            ctx.clearRect(0, 0, w, h);
+
+            if (data.length < 2) return;
+
+            ctx.beginPath();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1.5;
+
+            const step = w / (data.length - 1);
+            const max = Math.max(...data, 0.1);
+
+            data.forEach((v, i) => {
+                const x = i * step;
+                const y = h - (v / max) * h * 0.8 - h * 0.1;
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            });
+
+            ctx.stroke();
+        }
+
+        function drawCharts() {
+            drawChart('pain-chart', state.pain.history, '#ff4a4a');
+            drawChart('thermal-chart', state.thermal.history, '#ffda4a');
+            drawChart('vestib-chart', state.vestibular.history, '#4a9eff');
+        }
+
+        // Initialize
+        addAlert('info', 'System initialized - all subsystems nominal');
+        setInterval(simulate, 1000);
+        updateUI();
+    </script>
+</body>
+</html>

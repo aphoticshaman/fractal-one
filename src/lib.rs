@@ -39,7 +39,11 @@ pub mod vestibular;
 
 pub mod audit;
 pub mod auth;
+pub mod auth_hardened;
 pub mod error;
+pub mod export;
+pub mod llm_providers;
+pub mod metrics;
 pub mod neuro_link;
 pub mod text_normalize;
 
@@ -202,6 +206,21 @@ pub mod forecasting;
 pub use auth::{
     AuthenticatedIdentity, AuthenticationError, AuthenticationResult, AuthorizationLevel,
     CredentialType, InMemoryAuthProvider, AuthProvider,
+};
+pub use auth_hardened::{
+    HardenedAuthProvider, HardenedAuthConfig, CertificateValidator, CertificateIdentity,
+    AuthStatistics, AuthRegistrationError, CertificateError,
+};
+
+// Export SIEM integration
+pub use export::{
+    CefEvent, CefExporter, CefSeverity, JsonEvent, JsonExporter, JsonExportConfig,
+    OcsfEvent, OcsfExporter, OcsfCategory,
+};
+
+// LLM Provider configuration
+pub use llm_providers::{
+    LlmProvider, ModelId, ProviderConfig, ProviderRegistry, QuickSetup,
 };
 pub use neuro_link::{Pulse, Synapse};
 pub use noci_pulse::{NociPulseData, NociPulseDecoder, NociPulseEncoder};

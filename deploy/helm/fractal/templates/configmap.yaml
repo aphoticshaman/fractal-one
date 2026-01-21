@@ -1,0 +1,65 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "fractal.fullname" . }}-config
+  labels:
+    {{- include "fractal.labels" . | nindent 4 }}
+data:
+  config.toml: |
+    [server]
+    bind_address = "0.0.0.0"
+    bind_port = 8080
+    metrics_address = "0.0.0.0"
+    metrics_port = 9090
+    request_timeout_secs = 30
+    max_concurrent = 100
+
+    [security]
+    tls_enabled = {{ .Values.tls.enabled }}
+    mtls_enabled = {{ .Values.mtls.enabled }}
+    fips_mode = false
+    session_timeout_secs = 3600
+    max_auth_failures = 5
+    lockout_duration_secs = 900
+
+    [containment]
+    enabled = {{ .Values.fractal.containment.enabled }}
+    block_threshold = "{{ .Values.fractal.containment.blockThreshold }}"
+    manipulation_detection = true
+    operator_verification = true
+
+    [nociception]
+    sensitivity_threshold = {{ .Values.fractal.nociception.sensitivityThreshold }}
+    recovery_rate = {{ .Values.fractal.nociception.recoveryRate }}
+    memory_size = 100
+
+    [thermoception]
+    update_interval_ms = 100
+    warning_threshold = {{ .Values.fractal.thermoception.warningThreshold }}
+    critical_threshold = {{ .Values.fractal.thermoception.criticalThreshold }}
+    psan_enabled = true
+
+    [orchestration]
+    enabled = {{ .Values.fractal.orchestration.enabled }}
+    consensus_timeout_ms = 5000
+    consensus_threshold = {{ .Values.fractal.orchestration.consensusThreshold }}
+    adversarial_enabled = true
+
+    [alignment]
+    enabled = {{ .Values.fractal.alignment.enabled }}
+    corrigibility_level = "{{ .Values.fractal.alignment.corrigibilityLevel }}"
+    deference_enabled = {{ .Values.fractal.alignment.deferenceEnabled }}
+    uncertainty_threshold = 0.3
+
+    [logging]
+    level = "{{ .Values.fractal.logLevel }}"
+    format = "{{ .Values.fractal.logFormat }}"
+    siem_enabled = true
+
+    [storage]
+    data_dir = "/var/lib/fractal"
+    persistence_enabled = true
+
+    [observability]
+    prometheus_enabled = {{ .Values.metrics.enabled }}
+    health_check_enabled = true

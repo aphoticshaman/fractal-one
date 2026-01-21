@@ -1,0 +1,191 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# FRACTAL ONE — Default Configuration
+# ═══════════════════════════════════════════════════════════════════════════════
+# Production deployment configuration template
+# Copy and modify for your environment
+# ═══════════════════════════════════════════════════════════════════════════════
+
+[server]
+# HTTP API bind address
+bind_address = "0.0.0.0"
+bind_port = 8080
+
+# Prometheus metrics endpoint
+metrics_address = "0.0.0.0"
+metrics_port = 9090
+
+# Request timeout
+request_timeout_secs = 30
+
+# Maximum concurrent requests
+max_concurrent = 100
+
+[security]
+# Enable TLS (recommended for production)
+tls_enabled = false
+tls_cert_path = "/etc/fractal/certs/server.crt"
+tls_key_path = "/etc/fractal/certs/server.key"
+
+# mTLS for client authentication
+mtls_enabled = false
+mtls_ca_path = "/etc/fractal/certs/ca.crt"
+
+# FIPS 140-2 compliant mode
+fips_mode = false
+
+# Session timeout
+session_timeout_secs = 3600
+
+# Maximum failed auth attempts before lockout
+max_auth_failures = 5
+lockout_duration_secs = 900
+
+[containment]
+# Enable containment layer
+enabled = true
+
+# Default threat level threshold for blocking
+block_threshold = "high"
+
+# Enable manipulation detection
+manipulation_detection = true
+
+# Enable operator trust verification
+operator_verification = true
+
+[nociception]
+# Pain sensitivity threshold (0.0-1.0)
+sensitivity_threshold = 0.1
+
+# Damage recovery rate per second
+recovery_rate = 0.01
+
+# Maximum pain history entries
+memory_size = 100
+
+[thermoception]
+# Thermal zone update interval (ms)
+update_interval_ms = 100
+
+# Warning threshold (0.0-1.0)
+warning_threshold = 0.7
+
+# Critical threshold (0.0-1.0)
+critical_threshold = 0.9
+
+# Enable PSAN (adaptive noise)
+psan_enabled = true
+
+[orchestration]
+# Enable multi-agent orchestration
+enabled = true
+
+# Consensus timeout (ms)
+consensus_timeout_ms = 5000
+
+# Minimum agreement for consensus (0.0-1.0)
+consensus_threshold = 0.7
+
+# Enable adversarial agent (gamma)
+adversarial_enabled = true
+
+[alignment]
+# Enable alignment layer
+enabled = true
+
+# Corrigibility level (high/medium/low)
+corrigibility_level = "high"
+
+# Deference to human operators
+deference_enabled = true
+
+# Uncertainty threshold for deferral (0.0-1.0)
+uncertainty_threshold = 0.3
+
+[logging]
+# Log level (trace/debug/info/warn/error)
+level = "info"
+
+# Log format (json/text)
+format = "json"
+
+# Enable structured logging for SIEM
+siem_enabled = true
+
+# CEF output path (empty = disabled)
+cef_output = ""
+
+# JSON output path (empty = disabled)
+json_output = ""
+
+[storage]
+# Data directory
+data_dir = "/var/lib/fractal"
+
+# Enable persistence
+persistence_enabled = true
+
+# Baseline storage file
+baseline_file = "baselines.bin"
+
+# Audit log file
+audit_file = "audit.log"
+
+[llm]
+# Default LLM provider (anthropic/openai/xai/google/ollama)
+default_provider = "anthropic"
+
+# Request timeout for LLM calls
+timeout_secs = 120
+
+# Maximum retries
+max_retries = 3
+
+# Rate limiting (requests per minute)
+rate_limit_rpm = 60
+
+[llm.anthropic]
+# API endpoint (use default unless custom deployment)
+# base_url = "https://api.anthropic.com"
+
+# Default model
+default_model = "claude-3-5-sonnet-20241022"
+
+# API key from environment: ANTHROPIC_API_KEY
+
+[llm.openai]
+# API endpoint
+# base_url = "https://api.openai.com"
+
+# Default model
+default_model = "gpt-4o"
+
+# API key from environment: OPENAI_API_KEY
+
+[llm.ollama]
+# Local Ollama endpoint
+base_url = "http://localhost:11434"
+
+# Default model
+default_model = "llama2"
+
+[observability]
+# Enable Prometheus metrics
+prometheus_enabled = true
+
+# Enable OpenTelemetry tracing
+otel_enabled = false
+otel_endpoint = ""
+
+# Enable health check endpoint
+health_check_enabled = true
+
+[airgap]
+# Air-gapped mode (no external network calls)
+enabled = false
+
+# Use vendored dependencies
+vendored = false
+
+# Disable telemetry reporting
+no_telemetry = true

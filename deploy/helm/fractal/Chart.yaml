@@ -1,0 +1,25 @@
+apiVersion: v2
+name: fractal
+description: Structural alignment framework for AGI systems with proprioceptive monitoring
+type: application
+version: 0.6.0
+appVersion: "0.6.0"
+kubeVersion: ">=1.23.0"
+
+keywords:
+  - ai-safety
+  - alignment
+  - monitoring
+  - security
+
+home: https://github.com/aphoticshaman/fractal-one
+
+sources:
+  - https://github.com/aphoticshaman/fractal-one
+
+maintainers:
+  - name: Fractal Team
+
+annotations:
+  artifacthub.io/license: Unlicense
+  artifacthub.io/prerelease: "false"

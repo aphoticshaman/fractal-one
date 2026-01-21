@@ -1,0 +1,195 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# FRACTAL ONE — Helm Chart Values
+# ═══════════════════════════════════════════════════════════════════════════════
+# Default values for fractal deployment
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Replica configuration
+replicaCount: 1
+
+image:
+  repository: fractal
+  pullPolicy: IfNotPresent
+  tag: ""  # Defaults to Chart appVersion
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "9090"
+  prometheus.io/path: "/metrics"
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+  seccompProfile:
+    type: RuntimeDefault
+
+service:
+  type: ClusterIP
+  port: 8080
+  metricsPort: 9090
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: fractal.local
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls: []
+
+resources:
+  limits:
+    cpu: 2000m
+    memory: 4Gi
+  requests:
+    cpu: 500m
+    memory: 1Gi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# FRACTAL CONFIGURATION
+# ═══════════════════════════════════════════════════════════════════════════════
+
+fractal:
+  # Logging configuration
+  logLevel: info
+  logFormat: json
+
+  # Containment settings
+  containment:
+    enabled: true
+    blockThreshold: high
+
+  # Nociception settings
+  nociception:
+    sensitivityThreshold: 0.1
+    recoveryRate: 0.01
+
+  # Thermoception settings
+  thermoception:
+    warningThreshold: 0.7
+    criticalThreshold: 0.9
+
+  # Orchestration settings
+  orchestration:
+    enabled: true
+    consensusThreshold: 0.7
+
+  # Alignment settings
+  alignment:
+    enabled: true
+    corrigibilityLevel: high
+    deferenceEnabled: true
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# SECRETS MANAGEMENT
+# ═══════════════════════════════════════════════════════════════════════════════
+
+secrets:
+  # Use external secret (e.g., External Secrets Operator, Sealed Secrets)
+  useExternalSecret: false
+  externalSecretName: ""
+
+  # Or create secret from values (NOT recommended for production)
+  create: false
+  anthropicApiKey: ""
+  openaiApiKey: ""
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# TLS CONFIGURATION
+# ═══════════════════════════════════════════════════════════════════════════════
+
+tls:
+  enabled: false
+  # Use cert-manager
+  certManager:
+    enabled: false
+    issuerRef:
+      name: letsencrypt-prod
+      kind: ClusterIssuer
+  # Or provide existing secret
+  existingSecret: ""
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# mTLS CONFIGURATION
+# ═══════════════════════════════════════════════════════════════════════════════
+
+mtls:
+  enabled: false
+  caSecret: ""
+  clientAuth: require  # require, optional, none
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PERSISTENCE
+# ═══════════════════════════════════════════════════════════════════════════════
+
+persistence:
+  enabled: true
+  storageClass: ""
+  accessMode: ReadWriteOnce
+  size: 10Gi
+  annotations: {}
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# MONITORING
+# ═══════════════════════════════════════════════════════════════════════════════
+
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: false
+    interval: 30s
+    scrapeTimeout: 10s
+    labels: {}
+  prometheusRule:
+    enabled: false
+    rules: []
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# NETWORK POLICY
+# ═══════════════════════════════════════════════════════════════════════════════
+
+networkPolicy:
+  enabled: false
+  ingress: []
+  egress: []
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# POD DISRUPTION BUDGET
+# ═══════════════════════════════════════════════════════════════════════════════
+
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1

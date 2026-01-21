@@ -77,6 +77,19 @@ urlencoding = "2.1"
 # Home directory detection for config files
 dirs = "5.0"
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# SECURITY — Cryptographic primitives (enterprise hardening)
+# ═══════════════════════════════════════════════════════════════════════════════
+argon2 = "0.5"           # Password hashing (OWASP recommended)
+ring = "0.17"            # Cryptographic primitives (FIPS-capable)
+x509-parser = "0.16"     # X.509 certificate parsing
+rand = "0.8"             # Secure random generation
+base64 = "0.21"          # Encoding for tokens/certs
+sha2 = "0.10"            # SHA-256/384/512
+hmac = "0.12"            # HMAC for token validation
+subtle = "2.5"           # Constant-time comparison
+hex = "0.4"              # Hex encoding for hashes
+
 # DAG validation and cycle detection
 dag-cli = { path = "dag-cli" }
 
