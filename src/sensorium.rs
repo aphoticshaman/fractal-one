@@ -21,8 +21,8 @@ use crate::animacy::{
 };
 use crate::baseline::{AnomalyLevel, BaselineRegistry};
 use crate::momentum_gate::{GateSignal, KuramotoNoise, MomentumGate, MomentumGateConfig};
-use crate::stats::float_cmp;
 use crate::observations::{ObsKey, Observation, ObservationBatch};
+use crate::stats::float_cmp;
 use crate::time::TimePoint;
 use crate::vestibular::{DisorientationLevel, Vestibular, VestibularConfig};
 

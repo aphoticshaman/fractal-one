@@ -99,7 +99,7 @@ impl ChaosScenario {
 
 fn small_noise(step: usize) -> f64 {
     // Deterministic pseudo-noise for reproducibility
-    
+
     (step as f64 * 0.1).sin() * 0.1
 }
 

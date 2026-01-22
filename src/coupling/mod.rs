@@ -34,8 +34,8 @@
 //!
 //! ═══════════════════════════════════════════════════════════════════════════════
 
-use serde::{Deserialize, Serialize};
 use crate::stats::float_cmp;
+use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 
 // Submodules
@@ -418,7 +418,11 @@ impl FisherEstimator {
 
         if self.dim < 2 {
             // 1D: curvature is just the value
-            return fisher.first().and_then(|r| r.first()).copied().unwrap_or(0.0);
+            return fisher
+                .first()
+                .and_then(|r| r.first())
+                .copied()
+                .unwrap_or(0.0);
         }
 
         // For 2D: Gaussian curvature K = det(F) / (trace(F)²)

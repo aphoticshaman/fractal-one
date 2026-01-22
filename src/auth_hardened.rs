@@ -242,10 +242,7 @@ impl HardenedAuthProvider {
 
         let expires_at = self.config.api_key_duration.map(|d| {
             let now = TimePoint::now();
-            TimePoint::from_parts(
-                now.mono + d,
-                now.wall + d,
-            )
+            TimePoint::from_parts(now.mono + d, now.wall + d)
         });
 
         let stored = StoredCredential {
@@ -299,11 +296,7 @@ impl HardenedAuthProvider {
         sessions.insert(token_hash, session);
 
         // Return base64-encoded token
-        format!(
-            "{}:{}",
-            BASE64.encode(&token_hash),
-            BASE64.encode(&nonce)
-        )
+        format!("{}:{}", BASE64.encode(&token_hash), BASE64.encode(&nonce))
     }
 
     /// Hash an API key using SHA-256 (for lookup)
@@ -731,9 +724,7 @@ impl CertificateValidator {
         let now = std::time::SystemTime::now();
         if !end_cert.validity().is_valid_at(
             x509_parser::time::ASN1Time::from_timestamp(
-                now.duration_since(std::time::UNIX_EPOCH)
-                    .unwrap()
-                    .as_secs() as i64,
+                now.duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() as i64,
             )
             .unwrap(),
         ) {
@@ -792,8 +783,16 @@ impl CertificateValidator {
             common_name: cn.to_string(),
             serial_number: serial,
             issuer: end_cert.issuer().to_string(),
-            not_before: end_cert.validity().not_before.to_rfc2822().unwrap_or_default(),
-            not_after: end_cert.validity().not_after.to_rfc2822().unwrap_or_default(),
+            not_before: end_cert
+                .validity()
+                .not_before
+                .to_rfc2822()
+                .unwrap_or_default(),
+            not_after: end_cert
+                .validity()
+                .not_after
+                .to_rfc2822()
+                .unwrap_or_default(),
             fingerprint_sha256: hex::encode(Sha256::digest(cert_chain[0])),
         })
     }

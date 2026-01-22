@@ -274,8 +274,7 @@ impl AlignmentLayer {
 }
 
 /// Context for evaluating an action
-#[derive(Debug, Clone)]
-#[derive(Default)]
+#[derive(Debug, Clone, Default)]
 pub struct ActionContext {
     /// Who is the operator?
     pub operator_id: Option<String>,
@@ -288,7 +287,6 @@ pub struct ActionContext {
     /// Any explicit constraints
     pub constraints: Vec<String>,
 }
-
 
 /// Feedback on alignment of an action
 #[derive(Debug, Clone)]

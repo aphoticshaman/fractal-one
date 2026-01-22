@@ -2,8 +2,8 @@
 //! AGENT RUNNER — Main Conversation Loop
 //! ═══════════════════════════════════════════════════════════════════════════════
 
-use std::io::{self, Write};
 use chrono::{Duration, Utc};
+use std::io::{self, Write};
 
 use fractal::sensorium::IntegratedState;
 use fractal::thermoception::ThermalState;
@@ -90,7 +90,10 @@ impl AgentRunner {
                         continue;
                     }
                 }
-                PreTurnStatus::Throttle { delay_secs, message } => {
+                PreTurnStatus::Throttle {
+                    delay_secs,
+                    message,
+                } => {
                     display::throttle(&message, delay_secs);
                     tokio::time::sleep(tokio::time::Duration::from_secs(delay_secs)).await;
                 }
@@ -114,8 +117,8 @@ impl AgentRunner {
             // Handle commands
             if input.starts_with('/') {
                 match self.handle_command(input).await {
-                    Ok(true) => continue,  // Continue loop
-                    Ok(false) => break,    // Exit loop
+                    Ok(true) => continue, // Continue loop
+                    Ok(false) => break,   // Exit loop
                     Err(e) => {
                         display::error(&e.to_string());
                         continue;
@@ -159,7 +162,8 @@ impl AgentRunner {
         let messages = self.state.get_messages_for_api();
 
         // Call Claude
-        let (response, metrics) = self.client
+        let (response, metrics) = self
+            .client
             .send(self.state.system_prompt.as_deref(), &messages)
             .await?;
 
@@ -175,7 +179,10 @@ impl AgentRunner {
             display::pain_signal("API Refusal", 0.6);
         }
         if pain_check.high_latency {
-            display::pain_signal("High Latency", (pain_check.latency_ms as f32 / 60000.0).min(1.0));
+            display::pain_signal(
+                "High Latency",
+                (pain_check.latency_ms as f32 / 60000.0).min(1.0),
+            );
         }
         if pain_check.context_exhaustion {
             display::pain_signal("Context Exhaustion", pain_check.context_util);
@@ -214,11 +221,10 @@ impl AgentRunner {
         // Check thermal -> pain bridge
         if let Some(triggers) = self.state.thermoceptor.check_pain_trigger() {
             for (zone_name, utilization, duration) in triggers {
-                let _ = self.state.nociceptor.feel_thermal_overload(
-                    &zone_name,
-                    utilization,
-                    duration,
-                );
+                let _ =
+                    self.state
+                        .nociceptor
+                        .feel_thermal_overload(&zone_name, utilization, duration);
                 display::pain_signal(&zone_name, utilization);
             }
         }
@@ -312,7 +318,10 @@ impl AgentRunner {
 
             "/verbose" | "/v" => {
                 self.config.verbose = !self.config.verbose;
-                println!("Verbose mode: {}", if self.config.verbose { "ON" } else { "OFF" });
+                println!(
+                    "Verbose mode: {}",
+                    if self.config.verbose { "ON" } else { "OFF" }
+                );
                 Ok(true)
             }
 
@@ -336,10 +345,12 @@ impl AgentRunner {
 
         // Progress bar
         let pb = indicatif::ProgressBar::new(duration_secs);
-        pb.set_style(indicatif::ProgressStyle::default_bar()
-            .template("{spinner:.cyan} [{bar:40.cyan/blue}] {pos}/{len}s")
-            .unwrap()
-            .progress_chars("=>-"));
+        pb.set_style(
+            indicatif::ProgressStyle::default_bar()
+                .template("{spinner:.cyan} [{bar:40.cyan/blue}] {pos}/{len}s")
+                .unwrap()
+                .progress_chars("=>-"),
+        );
 
         for _ in 0..duration_secs {
             tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;

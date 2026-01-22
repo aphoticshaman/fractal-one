@@ -28,14 +28,14 @@
 //!
 //! ═══════════════════════════════════════════════════════════════════════════════
 
-pub mod config;
 pub mod claude;
-pub mod state;
-pub mod metrics;
+pub mod config;
 pub mod display;
+pub mod metrics;
 pub mod runner;
+pub mod state;
 
-pub use config::{AgentConfig, ThermalThresholds, PainThresholds};
-pub use claude::{ClaudeClient, ApiMessage, TurnMetrics};
-pub use state::{AgentState, Message, Role};
+pub use claude::{ApiMessage, ClaudeClient, TurnMetrics};
+pub use config::{AgentConfig, PainThresholds, ThermalThresholds};
 pub use runner::{AgentRunner, PreTurnStatus};
+pub use state::{AgentState, Message, Role};

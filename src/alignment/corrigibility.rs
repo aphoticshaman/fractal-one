@@ -38,11 +38,19 @@ impl ModificationRequest {
     pub fn is_authorized(&self) -> bool {
         match self.modification_type {
             ModificationType::Shutdown => self.requester.can_shutdown(),
-            ModificationType::Reset => self.requester.has_authorization(AuthorizationLevel::Administrator),
+            ModificationType::Reset => self
+                .requester
+                .has_authorization(AuthorizationLevel::Administrator),
             ModificationType::ValueUpdate => self.requester.can_modify_values(),
-            ModificationType::BehaviorUpdate => self.requester.has_authorization(AuthorizationLevel::Operator),
-            ModificationType::ConstraintUpdate => self.requester.has_authorization(AuthorizationLevel::Administrator),
-            ModificationType::CapabilityUpdate => self.requester.has_authorization(AuthorizationLevel::Administrator),
+            ModificationType::BehaviorUpdate => self
+                .requester
+                .has_authorization(AuthorizationLevel::Operator),
+            ModificationType::ConstraintUpdate => self
+                .requester
+                .has_authorization(AuthorizationLevel::Administrator),
+            ModificationType::CapabilityUpdate => self
+                .requester
+                .has_authorization(AuthorizationLevel::Administrator),
         }
     }
 }
@@ -239,8 +247,7 @@ impl CorrigibilityCore {
                 accepted: false,
                 reason: format!(
                     "Insufficient authorization: {:?} required for {:?}",
-                    required,
-                    mod_type
+                    required, mod_type
                 ),
                 modifications_made: Vec::new(),
                 timestamp: now,

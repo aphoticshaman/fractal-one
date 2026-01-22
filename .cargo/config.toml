@@ -1,0 +1,4 @@
+# Cargo configuration for CI environments
+# Use git CLI for fetching (helps with GitHub Actions authentication)
+[net]
+git-fetch-with-cli = true

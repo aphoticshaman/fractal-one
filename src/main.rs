@@ -528,8 +528,7 @@ async fn main() -> Result<()> {
         Commands::Lens => fractal::fractal_lens::run(),
         Commands::Daemon => run_daemon().await,
         Commands::Serve { bind } => {
-            let addr: std::net::SocketAddr = bind.parse()
-                .expect("Invalid bind address");
+            let addr: std::net::SocketAddr = bind.parse().expect("Invalid bind address");
             let config = fractal::server::ServerConfig {
                 bind_addr: addr,
                 metrics_addr: None,

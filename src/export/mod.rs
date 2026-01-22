@@ -14,5 +14,5 @@ pub mod json;
 pub mod ocsf;
 
 pub use cef::{CefEvent, CefExporter, CefSeverity};
-pub use json::{JsonEvent, JsonExporter, JsonExportConfig};
-pub use ocsf::{OcsfEvent, OcsfExporter, OcsfCategory};
+pub use json::{JsonEvent, JsonExportConfig, JsonExporter};
+pub use ocsf::{OcsfCategory, OcsfEvent, OcsfExporter};

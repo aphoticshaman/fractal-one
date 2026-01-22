@@ -6,9 +6,9 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
+use fractal::nociception::{Nociceptor, NociceptorConfig};
 use fractal::sensorium::{IntegratedState, Sensorium, SensoriumConfig};
 use fractal::thermoception::{ThermalState, Thermoceptor, ThermoceptorConfig};
-use fractal::nociception::{Nociceptor, NociceptorConfig};
 
 use crate::claude::{ApiMessage, TurnMetrics};
 

@@ -164,10 +164,7 @@ impl AbstractionHierarchy {
         };
 
         self.concepts.insert(id.clone(), node);
-        self.level_index
-            .entry(level)
-            .or_default()
-            .push(id.clone());
+        self.level_index.entry(level).or_default().push(id.clone());
 
         // Update parent-child relations
         for parent_id in &parents {

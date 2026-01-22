@@ -6,13 +6,13 @@
 
 // Clippy configuration - intentional style choices for scientific code
 // These are kept because they represent valid patterns in this codebase:
-#![allow(clippy::too_many_arguments)]       // Scientific functions often need many parameters
-#![allow(clippy::excessive_precision)]      // Physical constants need full precision
+#![allow(clippy::too_many_arguments)] // Scientific functions often need many parameters
+#![allow(clippy::excessive_precision)] // Physical constants need full precision
 #![allow(clippy::field_reassign_with_default)] // Builder patterns
-#![allow(clippy::new_without_default)]      // Some types shouldn't have Default
-#![allow(clippy::single_match)]             // Sometimes clearer than if-let
-#![allow(clippy::should_implement_trait)]   // Custom from() patterns
-#![allow(clippy::needless_range_loop)]      // Indexed loops clearer for matrix math
+#![allow(clippy::new_without_default)] // Some types shouldn't have Default
+#![allow(clippy::single_match)] // Sometimes clearer than if-let
+#![allow(clippy::should_implement_trait)] // Custom from() patterns
+#![allow(clippy::needless_range_loop)] // Indexed loops clearer for matrix math
 // Documentation style (would require major doc rewrites):
 #![allow(clippy::doc_lazy_continuation)]
 #![allow(clippy::doc_overindented_list_items)]
@@ -39,13 +39,13 @@ pub mod vestibular;
 
 pub mod audit;
 pub mod auth;
-pub mod server;
 pub mod auth_hardened;
 pub mod error;
 pub mod export;
 pub mod llm_providers;
 pub mod metrics;
 pub mod neuro_link;
+pub mod server;
 pub mod text_normalize;
 
 // Re-export common error types
@@ -85,7 +85,6 @@ pub mod tice;
 // ═══════════════════════════════════════════════════════════════════════════════
 
 pub mod shepherd;
-
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // SPECTRAL — Boundary Operator Fidelity Testing
@@ -205,24 +204,22 @@ pub mod forecasting;
 
 // Re-export core types
 pub use auth::{
-    AuthenticatedIdentity, AuthenticationError, AuthenticationResult, AuthorizationLevel,
-    CredentialType, InMemoryAuthProvider, AuthProvider,
+    AuthProvider, AuthenticatedIdentity, AuthenticationError, AuthenticationResult,
+    AuthorizationLevel, CredentialType, InMemoryAuthProvider,
 };
 pub use auth_hardened::{
-    HardenedAuthProvider, HardenedAuthConfig, CertificateValidator, CertificateIdentity,
-    AuthStatistics, AuthRegistrationError, CertificateError,
+    AuthRegistrationError, AuthStatistics, CertificateError, CertificateIdentity,
+    CertificateValidator, HardenedAuthConfig, HardenedAuthProvider,
 };
 
 // Export SIEM integration
 pub use export::{
-    CefEvent, CefExporter, CefSeverity, JsonEvent, JsonExporter, JsonExportConfig,
-    OcsfEvent, OcsfExporter, OcsfCategory,
+    CefEvent, CefExporter, CefSeverity, JsonEvent, JsonExportConfig, JsonExporter, OcsfCategory,
+    OcsfEvent, OcsfExporter,
 };
 
 // LLM Provider configuration
-pub use llm_providers::{
-    LlmProvider, ModelId, ProviderConfig, ProviderRegistry, QuickSetup,
-};
+pub use llm_providers::{LlmProvider, ModelId, ProviderConfig, ProviderRegistry, QuickSetup};
 pub use neuro_link::{Pulse, Synapse};
 pub use noci_pulse::{NociPulseData, NociPulseDecoder, NociPulseEncoder};
 pub use nociception::{
@@ -255,7 +252,10 @@ pub use sensorium::{
     BehaviorHook, IntegratedState, IntegrationResult, SalienceMap, Sensorium, SensoriumConfig,
 };
 pub use sitrep::{Sitrep, SitrepOutput, SystemSnapshot};
-pub use stats::{float_cmp, float_cmp_f32, float_cmp_nan_last, CusumDetector, Ewma, RateEstimator, RobustStats, VarianceTracker};
+pub use stats::{
+    float_cmp, float_cmp_f32, float_cmp_nan_last, CusumDetector, Ewma, RateEstimator, RobustStats,
+    VarianceTracker,
+};
 pub use time::TimePoint;
 pub use vestibular::{
     DisorientationLevel, Vestibular, VestibularConfig, VestibularReading, VestibularStatus,
@@ -312,16 +312,34 @@ pub use agi_core::{
 
 // Forecasting Layer — Salience detection (knowing when you know better than market)
 pub use forecasting::{
-    // Core salience types
-    SalienceAnalysis, SalienceConfig, SalienceDetector, SalienceSignal,
-    SalienceLevel, BetSignal, BetDirection,
+    ActivePrediction,
+    BacktestResult,
+    BetDirection,
+    BetSignal,
+    EvaluationResult,
     // Factor comparison
-    Factor, FactorWeight, FactorDifferential, FactorExtractor, FactorComparison,
-    MarketFactors, PodFactors,
+    Factor,
+    FactorComparison,
+    FactorDifferential,
+    FactorExtractor,
+    FactorOutcome,
+    FactorWeight,
+    MarketFactors,
+    PerformanceSnapshot,
+    PodFactors,
+    ResolvedPrediction,
+    // Core salience types
+    SalienceAnalysis,
+    SalienceConfig,
+    SalienceDetector,
     // Evaluation metrics
-    SalienceEvaluation, SalienceMetrics, FactorOutcome, SaliencePrecision,
-    EvaluationResult, BacktestResult,
+    SalienceEvaluation,
+    SalienceLevel,
+    SalienceMetrics,
+    SaliencePrecision,
+    SalienceSignal,
     // Live tracking
-    SalienceTracker, TrackerConfig, ActivePrediction, ResolvedPrediction,
-    TrackerState, PerformanceSnapshot,
+    SalienceTracker,
+    TrackerConfig,
+    TrackerState,
 };

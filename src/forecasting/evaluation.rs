@@ -14,9 +14,9 @@
 //! - Conditional Brier: Brier score when salience was detected vs not
 //! ═══════════════════════════════════════════════════════════════════════════════
 
-use super::salience::{SalienceAnalysis, SalienceLevel, BetDirection};
-use crate::time::TimePoint;
+use super::salience::{BetDirection, SalienceAnalysis, SalienceLevel};
 use crate::stats;
+use crate::time::TimePoint;
 use std::collections::HashMap;
 
 /// Outcome of a factor that was flagged as salient
@@ -79,16 +79,12 @@ impl SalienceEvaluation {
             !outcome
         };
 
-        let bet_won = analysis.bet_signal.as_ref().map(|bet| {
-            match bet.direction {
-                BetDirection::Yes => outcome,
-                BetDirection::No => !outcome,
-            }
+        let bet_won = analysis.bet_signal.as_ref().map(|bet| match bet.direction {
+            BetDirection::Yes => outcome,
+            BetDirection::No => !outcome,
         });
 
-        let correct_factors = factor_outcomes.iter()
-            .filter(|f| f.pod_was_right)
-            .count();
+        let correct_factors = factor_outcomes.iter().filter(|f| f.pod_was_right).count();
         let factor_precision = if factor_outcomes.is_empty() {
             1.0 // No factors to evaluate
         } else {
@@ -220,7 +216,11 @@ pub struct LevelMetrics {
 
 impl LevelMetrics {
     pub fn precision(&self) -> f64 {
-        if self.count == 0 { 0.0 } else { self.correct as f64 / self.count as f64 }
+        if self.count == 0 {
+            0.0
+        } else {
+            self.correct as f64 / self.count as f64
+        }
     }
 }
 
@@ -323,12 +323,15 @@ impl BacktestResult {
             let briers: Vec<f64> = evals.iter().map(|e| e.pod_brier).collect();
             let edges: Vec<f64> = evals.iter().map(|e| e.edge()).collect();
 
-            level_metrics.insert(level, LevelMetrics {
-                count: evals.len(),
-                correct,
-                avg_brier: stats::mean(&briers).unwrap_or(0.0),
-                avg_edge: stats::mean(&edges).unwrap_or(0.0),
-            });
+            level_metrics.insert(
+                level,
+                LevelMetrics {
+                    count: evals.len(),
+                    correct,
+                    avg_brier: stats::mean(&briers).unwrap_or(0.0),
+                    avg_edge: stats::mean(&edges).unwrap_or(0.0),
+                },
+            );
         }
 
         let metrics = SalienceMetrics {
@@ -372,25 +375,29 @@ impl BacktestResult {
         } else if bet_precision >= 0.9 && bets_fired >= 4 {
             reasoning.push(format!(
                 "Bet precision {:.0}% on {} signals - strong salience detection",
-                bet_precision * 100.0, bets_fired
+                bet_precision * 100.0,
+                bets_fired
             ));
             VerdictStatus::Positive
         } else if bet_precision >= 0.7 && bets_fired >= 3 {
             reasoning.push(format!(
                 "Bet precision {:.0}% on {} signals - moderate salience detection",
-                bet_precision * 100.0, bets_fired
+                bet_precision * 100.0,
+                bets_fired
             ));
             VerdictStatus::WeakPositive
         } else if bet_precision >= 0.5 {
             reasoning.push(format!(
                 "Bet precision {:.0}% on {} signals - inconclusive",
-                bet_precision * 100.0, bets_fired
+                bet_precision * 100.0,
+                bets_fired
             ));
             VerdictStatus::Inconclusive
         } else {
             reasoning.push(format!(
                 "Bet precision {:.0}% on {} signals - salience detection failing",
-                bet_precision * 100.0, bets_fired
+                bet_precision * 100.0,
+                bets_fired
             ));
             VerdictStatus::Negative
         };
@@ -410,13 +417,18 @@ impl BacktestResult {
 
         // Sample size warning
         if n < 50 {
-            reasoning.push(format!("Sample size n={} insufficient for statistical confidence", n));
+            reasoning.push(format!(
+                "Sample size n={} insufficient for statistical confidence",
+                n
+            ));
         }
 
         let summary = match status {
             VerdictStatus::Positive => format!(
                 "POSITIVE: {}/{} bets won ({:.0}%), salience detection working",
-                metrics.precision.bets_won, bets_fired, bet_precision * 100.0
+                metrics.precision.bets_won,
+                bets_fired,
+                bet_precision * 100.0
             ),
             VerdictStatus::WeakPositive => format!(
                 "WEAK POSITIVE: {}/{} bets won, needs larger n",
@@ -436,9 +448,15 @@ impl BacktestResult {
         let recommendation = match status {
             VerdictStatus::Positive => "Continue using salience signals for betting".to_string(),
             VerdictStatus::WeakPositive => "Expand sample size to confirm signal".to_string(),
-            VerdictStatus::Inconclusive => "Gather more data before drawing conclusions".to_string(),
-            VerdictStatus::NoSignal => "Lower salience threshold or expand question set".to_string(),
-            VerdictStatus::Negative => "Do not use salience signals for betting - investigate failure mode".to_string(),
+            VerdictStatus::Inconclusive => {
+                "Gather more data before drawing conclusions".to_string()
+            }
+            VerdictStatus::NoSignal => {
+                "Lower salience threshold or expand question set".to_string()
+            }
+            VerdictStatus::Negative => {
+                "Do not use salience signals for betting - investigate failure mode".to_string()
+            }
         };
 
         BacktestVerdict {
@@ -463,31 +481,57 @@ impl BacktestResult {
         lines.push(String::new());
 
         lines.push("KEY METRICS (Salience-Centric):".to_string());
-        lines.push(format!("  Bet Precision:     {}/{} = {:.0}%",
+        lines.push(format!(
+            "  Bet Precision:     {}/{} = {:.0}%",
             self.metrics.precision.bets_won,
             self.metrics.precision.bets_fired,
             self.metrics.precision.bet_precision() * 100.0
         ));
-        lines.push(format!("  Salience Precision: {}/{} = {:.0}%",
+        lines.push(format!(
+            "  Salience Precision: {}/{} = {:.0}%",
             self.metrics.precision.salience_correct,
             self.metrics.precision.salience_detected,
             self.metrics.precision.salience_precision() * 100.0
         ));
-        lines.push(format!("  Factor Precision:  {:.0}%", self.metrics.factor_precision * 100.0));
-        lines.push(format!("  Conditional Edge:  {:+.1}%", self.metrics.conditional_edge * 100.0));
+        lines.push(format!(
+            "  Factor Precision:  {:.0}%",
+            self.metrics.factor_precision * 100.0
+        ));
+        lines.push(format!(
+            "  Conditional Edge:  {:+.1}%",
+            self.metrics.conditional_edge * 100.0
+        ));
         lines.push(String::new());
 
         lines.push("SECONDARY METRICS (Traditional):".to_string());
-        lines.push(format!("  Brier (with salience): {:.4}", self.metrics.brier_with_salience));
-        lines.push(format!("  Brier (no salience):   {:.4}", self.metrics.brier_without_salience));
-        lines.push(format!("  Market Brier:          {:.4}", self.metrics.market_brier));
+        lines.push(format!(
+            "  Brier (with salience): {:.4}",
+            self.metrics.brier_with_salience
+        ));
+        lines.push(format!(
+            "  Brier (no salience):   {:.4}",
+            self.metrics.brier_without_salience
+        ));
+        lines.push(format!(
+            "  Market Brier:          {:.4}",
+            self.metrics.market_brier
+        ));
         lines.push(String::new());
 
         lines.push("BY SALIENCE LEVEL:".to_string());
-        for level in [SalienceLevel::Strong, SalienceLevel::Moderate, SalienceLevel::Weak, SalienceLevel::None] {
+        for level in [
+            SalienceLevel::Strong,
+            SalienceLevel::Moderate,
+            SalienceLevel::Weak,
+            SalienceLevel::None,
+        ] {
             if let Some(lm) = self.metrics.by_level.get(&level) {
-                lines.push(format!("  {:?}: n={}, precision={:.0}%, edge={:+.1}%",
-                    level, lm.count, lm.precision() * 100.0, lm.avg_edge * 100.0
+                lines.push(format!(
+                    "  {:?}: n={}, precision={:.0}%, edge={:+.1}%",
+                    level,
+                    lm.count,
+                    lm.precision() * 100.0,
+                    lm.avg_edge * 100.0
                 ));
             }
         }
@@ -531,14 +575,24 @@ pub struct EvaluationResult {
 mod tests {
     use super::*;
 
-    fn make_evaluation(salience: bool, bet: bool, won: Option<bool>, pod_brier: f64, market_brier: f64) -> SalienceEvaluation {
+    fn make_evaluation(
+        salience: bool,
+        bet: bool,
+        won: Option<bool>,
+        pod_brier: f64,
+        market_brier: f64,
+    ) -> SalienceEvaluation {
         SalienceEvaluation {
             analysis_id: "test".to_string(),
             directional_correct: true,
             pod_brier,
             market_brier,
             had_salience: salience,
-            salience_level: if salience { SalienceLevel::Strong } else { SalienceLevel::None },
+            salience_level: if salience {
+                SalienceLevel::Strong
+            } else {
+                SalienceLevel::None
+            },
             bet_signal_fired: bet,
             bet_won: won,
             factor_outcomes: vec![],

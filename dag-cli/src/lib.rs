@@ -452,10 +452,12 @@ impl Dag {
                         .map(|a| a.clone());
                     if let Some(l) = existing_label {
                         attrs.retain(|a| !a.starts_with("label="));
-                        let label_content = l
-                            .trim_start_matches("label=\"")
-                            .trim_end_matches("\"");
-                        attrs.push(format!("label=\"{}\\np={:.0}%\"", label_content, prob * 100.0));
+                        let label_content = l.trim_start_matches("label=\"").trim_end_matches("\"");
+                        attrs.push(format!(
+                            "label=\"{}\\np={:.0}%\"",
+                            label_content,
+                            prob * 100.0
+                        ));
                     } else {
                         attrs.push(format!("label=\"{}\\np={:.0}%\"", name, prob * 100.0));
                     }
@@ -488,7 +490,12 @@ impl Dag {
                 if attrs.is_empty() {
                     dot.push_str(&format!("  \"{}\" -> \"{}\";\n", from, to));
                 } else {
-                    dot.push_str(&format!("  \"{}\" -> \"{}\" [{}];\n", from, to, attrs.join(", ")));
+                    dot.push_str(&format!(
+                        "  \"{}\" -> \"{}\" [{}];\n",
+                        from,
+                        to,
+                        attrs.join(", ")
+                    ));
                 }
             } else {
                 dot.push_str(&format!("  \"{}\" -> \"{}\";\n", from, to));

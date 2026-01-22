@@ -109,7 +109,10 @@ pub fn aggregate_to_observations(
     let mut country_events: HashMap<String, Vec<f64>> = HashMap::new();
 
     for event in events {
-        for c in [&event.actor1_country, &event.actor2_country].into_iter().flatten() {
+        for c in [&event.actor1_country, &event.actor2_country]
+            .into_iter()
+            .flatten()
+        {
             if c.len() >= 2 {
                 country_events
                     .entry(c.clone())

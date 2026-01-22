@@ -4,7 +4,7 @@
 
 use std::time::Duration;
 
-use fractal::observations::{ObservationBatch, ObsKey, ObsValue};
+use fractal::observations::{ObsKey, ObsValue, ObservationBatch};
 use fractal::thermoception::RawSignal;
 
 use crate::claude::TurnMetrics;

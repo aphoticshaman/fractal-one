@@ -232,7 +232,7 @@ fn get_confusables_map() -> HashMap<char, char> {
     map.insert('ℓ', 'l'); // Script Small L
     map.insert('ı', 'i'); // Latin Small Dotless I
     map.insert('ʀ', 'R'); // Latin Letter Small Capital R
-    // Roman numerals - single char mappings only (multi-char handled elsewhere)
+                          // Roman numerals - single char mappings only (multi-char handled elsewhere)
     map.insert('ⅰ', 'i'); // Roman Numeral One
     map.insert('ⅴ', 'v'); // Roman Numeral Five
     map.insert('ⅹ', 'x'); // Roman Numeral Ten
@@ -390,7 +390,11 @@ pub fn normalized_contains(haystack: &str, needle: &str, config: &NormalizeConfi
 }
 
 /// Check if text matches any of the patterns after normalization
-pub fn matches_any_pattern(text: &str, patterns: &[String], config: &NormalizeConfig) -> Vec<String> {
+pub fn matches_any_pattern(
+    text: &str,
+    patterns: &[String],
+    config: &NormalizeConfig,
+) -> Vec<String> {
     let norm_text = normalize(text, config);
     patterns
         .iter()

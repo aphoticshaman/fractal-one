@@ -10,9 +10,9 @@
 //!
 //! ═══════════════════════════════════════════════════════════════════════════════
 
-use crate::observations::ObservationBatch;
 use crate::containment::{ContainmentResult, ThreatLevel};
-use crate::nociception::{PainSignal, PainType, DamageState};
+use crate::nociception::{DamageState, PainSignal, PainType};
+use crate::observations::ObservationBatch;
 use crate::time::TimePoint;
 
 use serde::{Deserialize, Serialize};
@@ -298,10 +298,7 @@ impl JsonExporter {
     /// Flush buffered events
     pub fn flush(&self) -> Vec<String> {
         let mut buffer = self.buffer.lock().unwrap();
-        let events: Vec<String> = buffer
-            .iter()
-            .filter_map(|e| self.export(e))
-            .collect();
+        let events: Vec<String> = buffer.iter().filter_map(|e| self.export(e)).collect();
         buffer.clear();
         events
     }
@@ -316,10 +313,7 @@ impl JsonExporter {
             ThreatLevel::Critical => 4,
         };
 
-        let mut event = self.base_event(
-            if result.allowed { 201 } else { 200 },
-            "containment",
-        );
+        let mut event = self.base_event(if result.allowed { 201 } else { 200 }, "containment");
 
         event.event.category = vec!["threat".to_string()];
         event.event.event_type = vec!["indicator".to_string()];
@@ -341,7 +335,8 @@ impl JsonExporter {
             3 => "error",
             4 => "critical",
             _ => "info",
-        }.to_string();
+        }
+        .to_string();
         event.log.message = Some(result.reason.clone());
 
         event.fractal.threat_level = Some(format!("{:?}", result.threat_level));
@@ -371,7 +366,12 @@ impl JsonExporter {
 
         event.event.category = vec!["host".to_string()];
         event.event.event_type = vec!["info".to_string()];
-        event.event.kind = if signal.requires_response() { "alert" } else { "event" }.to_string();
+        event.event.kind = if signal.requires_response() {
+            "alert"
+        } else {
+            "event"
+        }
+        .to_string();
         event.event.severity = severity;
         event.event.risk_score = Some((signal.intensity * 100.0) as f64);
 
@@ -381,7 +381,8 @@ impl JsonExporter {
             3 => "warn",
             4 => "error",
             _ => "info",
-        }.to_string();
+        }
+        .to_string();
 
         let pain_type_str = match &signal.pain_type {
             PainType::ConstraintViolation { constraint_id, .. } => {
@@ -427,19 +428,31 @@ impl JsonExporter {
 
         event.event.category = vec!["host".to_string()];
         event.event.event_type = vec!["info".to_string()];
-        event.event.kind = if damage.is_critical() { "alert" } else { "event" }.to_string();
+        event.event.kind = if damage.is_critical() {
+            "alert"
+        } else {
+            "event"
+        }
+        .to_string();
         event.event.severity = severity;
         event.event.risk_score = Some((damage.total * 100.0) as f64);
 
         event.log.message = Some(format!(
             "Accumulated damage: {:.2}{}",
             damage.total,
-            damage.worst_location.as_ref().map(|l| format!(" (worst: {})", l)).unwrap_or_default()
+            damage
+                .worst_location
+                .as_ref()
+                .map(|l| format!(" (worst: {})", l))
+                .unwrap_or_default()
         ));
 
         event.fractal.pain = Some(PainFields {
             intensity: 0.0,
-            location: damage.worst_location.clone().unwrap_or_else(|| "unknown".to_string()),
+            location: damage
+                .worst_location
+                .clone()
+                .unwrap_or_else(|| "unknown".to_string()),
             pain_type: "accumulated_damage".to_string(),
             acute: false,
             damage_total: Some(damage.total as f64),

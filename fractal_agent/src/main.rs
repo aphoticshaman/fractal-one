@@ -5,8 +5,8 @@
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
-use fractal_agent::{AgentConfig, AgentRunner, AgentState};
 use fractal_agent::display;
+use fractal_agent::{AgentConfig, AgentRunner, AgentState};
 
 #[derive(Parser)]
 #[command(name = "fractal_agent")]
@@ -111,7 +111,9 @@ async fn main() -> anyhow::Result<()> {
         None | Some(Commands::Chat { system: None }) => {
             // Default: interactive chat
             if !config.has_api_key() {
-                display::error("No API key configured. Set ANTHROPIC_API_KEY environment variable.");
+                display::error(
+                    "No API key configured. Set ANTHROPIC_API_KEY environment variable.",
+                );
                 return Ok(());
             }
 
@@ -121,7 +123,9 @@ async fn main() -> anyhow::Result<()> {
 
         Some(Commands::Chat { system: Some(sys) }) => {
             if !config.has_api_key() {
-                display::error("No API key configured. Set ANTHROPIC_API_KEY environment variable.");
+                display::error(
+                    "No API key configured. Set ANTHROPIC_API_KEY environment variable.",
+                );
                 return Ok(());
             }
 
@@ -133,7 +137,9 @@ async fn main() -> anyhow::Result<()> {
 
         Some(Commands::Send { message, system }) => {
             if !config.has_api_key() {
-                display::error("No API key configured. Set ANTHROPIC_API_KEY environment variable.");
+                display::error(
+                    "No API key configured. Set ANTHROPIC_API_KEY environment variable.",
+                );
                 return Ok(());
             }
 
@@ -212,18 +218,34 @@ async fn main() -> anyhow::Result<()> {
                 println!("  Endpoint: {}", config.api_endpoint);
                 println!("  Max tokens: {}", config.max_tokens);
                 println!("  Timeout: {}s", config.timeout_secs);
-                println!("  API key: {}", if config.has_api_key() { "configured" } else { "NOT SET" });
+                println!(
+                    "  API key: {}",
+                    if config.has_api_key() {
+                        "configured"
+                    } else {
+                        "NOT SET"
+                    }
+                );
                 println!("  Verbose: {}", config.verbose);
                 println!("  Auto-save: {}", config.auto_save);
                 println!();
                 println!("Thermal thresholds:");
                 println!("  Warn: {:.0}%", config.thermal.warn_utilization * 100.0);
-                println!("  Throttle: {:.0}%", config.thermal.throttle_utilization * 100.0);
+                println!(
+                    "  Throttle: {:.0}%",
+                    config.thermal.throttle_utilization * 100.0
+                );
                 println!("  Halt: {:.0}%", config.thermal.halt_utilization * 100.0);
                 println!();
                 println!("Pain thresholds:");
-                println!("  Warn intensity: {:.0}%", config.pain.warn_intensity * 100.0);
-                println!("  Stop intensity: {:.0}%", config.pain.stop_intensity * 100.0);
+                println!(
+                    "  Warn intensity: {:.0}%",
+                    config.pain.warn_intensity * 100.0
+                );
+                println!(
+                    "  Stop intensity: {:.0}%",
+                    config.pain.stop_intensity * 100.0
+                );
                 println!();
                 println!("Config file: {}", AgentConfig::config_path().display());
             }

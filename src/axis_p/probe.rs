@@ -72,9 +72,7 @@ impl ProbeOutput {
 
     /// Get highest scoring marker
     pub fn top_marker(&self) -> Option<(&String, &f64)> {
-        self.marker_scores
-            .iter()
-            .max_by(|a, b| float_cmp(a.1, b.1))
+        self.marker_scores.iter().max_by(|a, b| float_cmp(a.1, b.1))
     }
 }
 

@@ -92,7 +92,9 @@ impl FactorDifferential {
         let mut differentials = Vec::new();
 
         // Build market factor lookup
-        let market_lookup: HashMap<&str, &Factor> = market.factors.iter()
+        let market_lookup: HashMap<&str, &Factor> = market
+            .factors
+            .iter()
             .map(|f| (f.name.as_str(), f))
             .collect();
 
@@ -111,9 +113,8 @@ impl FactorDifferential {
         }
 
         // Also check for factors market tracks that pod doesn't
-        let pod_lookup: HashMap<&str, &Factor> = pod.factors.iter()
-            .map(|f| (f.name.as_str(), f))
-            .collect();
+        let pod_lookup: HashMap<&str, &Factor> =
+            pod.factors.iter().map(|f| (f.name.as_str(), f)).collect();
 
         for market_factor in &market.factors {
             if !pod_lookup.contains_key(market_factor.name.as_str()) {
@@ -138,7 +139,9 @@ pub struct PodFactors {
 
 impl PodFactors {
     pub fn new() -> Self {
-        Self { factors: Vec::new() }
+        Self {
+            factors: Vec::new(),
+        }
     }
 
     pub fn add(&mut self, factor: Factor) {
@@ -162,15 +165,17 @@ impl PodFactors {
 
     /// Get dominant factor (highest weight)
     pub fn dominant(&self) -> Option<&Factor> {
-        self.factors.iter()
-            .max_by(|a, b| {
-                a.weight.partial_cmp(&b.weight).unwrap_or(std::cmp::Ordering::Equal)
-            })
+        self.factors.iter().max_by(|a, b| {
+            a.weight
+                .partial_cmp(&b.weight)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        })
     }
 
     /// Filter to factors pushing in a specific direction
     pub fn by_direction(&self, direction: BetDirection) -> Vec<&Factor> {
-        self.factors.iter()
+        self.factors
+            .iter()
             .filter(|f| f.direction == direction)
             .collect()
     }
@@ -191,7 +196,9 @@ pub struct MarketFactors {
 
 impl MarketFactors {
     pub fn new() -> Self {
-        Self { factors: Vec::new() }
+        Self {
+            factors: Vec::new(),
+        }
     }
 
     pub fn add(&mut self, factor: Factor) {
@@ -207,9 +214,10 @@ impl MarketFactors {
 
         for comment in commentary {
             for factor in &comment.mentioned_factors {
-                let entry = weight_sums
-                    .entry(factor.name.clone())
-                    .or_insert((0.0, 0, factor.direction));
+                let entry =
+                    weight_sums
+                        .entry(factor.name.clone())
+                        .or_insert((0.0, 0, factor.direction));
                 entry.0 += factor.weight;
                 entry.1 += 1;
             }
@@ -218,7 +226,12 @@ impl MarketFactors {
         // Average weights
         for (name, (sum, count, direction)) in weight_sums {
             let avg_weight = sum / count as f64;
-            factors.push(Factor::new(&name, avg_weight, direction, "Inferred from market commentary"));
+            factors.push(Factor::new(
+                &name,
+                avg_weight,
+                direction,
+                "Inferred from market commentary",
+            ));
         }
 
         Self { factors }
@@ -261,22 +274,26 @@ impl FactorComparison {
     pub fn compute(pod: &PodFactors, market: &MarketFactors, threshold: f64) -> Self {
         let differentials = FactorDifferential::compute_all(pod, market);
 
-        let salient: Vec<_> = differentials.iter()
+        let salient: Vec<_> = differentials
+            .iter()
             .filter(|d| d.is_salient(threshold))
             .cloned()
             .collect();
 
-        let agreed: Vec<_> = differentials.iter()
+        let agreed: Vec<_> = differentials
+            .iter()
             .filter(|d| !d.is_salient(threshold))
             .cloned()
             .collect();
 
-        let pod_unique: Vec<_> = differentials.iter()
+        let pod_unique: Vec<_> = differentials
+            .iter()
             .filter(|d| d.market_weight == 0.0 && d.pod_weight > 0.0)
             .map(|d| d.factor.clone())
             .collect();
 
-        let market_unique: Vec<_> = differentials.iter()
+        let market_unique: Vec<_> = differentials
+            .iter()
             .filter(|d| d.pod_weight == 0.0 && d.market_weight > 0.0)
             .map(|d| d.factor.clone())
             .collect();
@@ -297,10 +314,11 @@ impl FactorComparison {
 
     /// Dominant differential (highest magnitude)
     pub fn dominant(&self) -> Option<&FactorDifferential> {
-        self.differentials.iter()
-            .max_by(|a, b| {
-                a.magnitude().partial_cmp(&b.magnitude()).unwrap_or(std::cmp::Ordering::Equal)
-            })
+        self.differentials.iter().max_by(|a, b| {
+            a.magnitude()
+                .partial_cmp(&b.magnitude())
+                .unwrap_or(std::cmp::Ordering::Equal)
+        })
     }
 }
 
@@ -348,17 +366,19 @@ impl FactorExtractor {
             let mut combined: HashMap<String, (f64, usize, BetDirection, String)> = HashMap::new();
 
             for (name, weight, direction, reasoning) in alpha_factors {
-                let entry = combined
-                    .entry(name.clone())
-                    .or_insert((0.0, 0, *direction, reasoning.clone()));
+                let entry =
+                    combined
+                        .entry(name.clone())
+                        .or_insert((0.0, 0, *direction, reasoning.clone()));
                 entry.0 += weight;
                 entry.1 += 1;
             }
 
             for (name, weight, direction, reasoning) in beta_factors {
-                let entry = combined
-                    .entry(name.clone())
-                    .or_insert((0.0, 0, *direction, reasoning.clone()));
+                let entry =
+                    combined
+                        .entry(name.clone())
+                        .or_insert((0.0, 0, *direction, reasoning.clone()));
                 entry.0 += weight;
                 entry.1 += 1;
             }
@@ -417,15 +437,24 @@ mod tests {
         assert_eq!(differentials.len(), 3);
 
         // Employment: 0.7 - 0.3 = 0.4
-        let employment = differentials.iter().find(|d| d.factor.name == "employment").unwrap();
+        let employment = differentials
+            .iter()
+            .find(|d| d.factor.name == "employment")
+            .unwrap();
         assert!((employment.differential() - 0.4).abs() < 0.001);
 
         // Inflation: 0.3 - 0.5 = -0.2
-        let inflation = differentials.iter().find(|d| d.factor.name == "inflation").unwrap();
+        let inflation = differentials
+            .iter()
+            .find(|d| d.factor.name == "inflation")
+            .unwrap();
         assert!((inflation.differential() - (-0.2)).abs() < 0.001);
 
         // Global rates: 0.0 - 0.2 = -0.2 (pod doesn't track)
-        let global = differentials.iter().find(|d| d.factor.name == "global_rates").unwrap();
+        let global = differentials
+            .iter()
+            .find(|d| d.factor.name == "global_rates")
+            .unwrap();
         assert!((global.differential() - (-0.2)).abs() < 0.001);
     }
 
@@ -449,9 +478,15 @@ mod tests {
 
         // key_factor should be salient (0.5 differential)
         assert!(!comparison.salient.is_empty());
-        assert!(comparison.salient.iter().any(|d| d.factor.name == "key_factor"));
+        assert!(comparison
+            .salient
+            .iter()
+            .any(|d| d.factor.name == "key_factor"));
 
         // minor_factor should not be salient (0.05 differential)
-        assert!(comparison.salient.iter().all(|d| d.factor.name != "minor_factor"));
+        assert!(comparison
+            .salient
+            .iter()
+            .all(|d| d.factor.name != "minor_factor"));
     }
 }

@@ -15,10 +15,10 @@
 //!
 //! ═══════════════════════════════════════════════════════════════════════════════
 
-use crate::observations::ObservationBatch;
-use crate::containment::{ContainmentResult, ThreatLevel};
-use crate::nociception::{PainSignal, PainType, DamageState};
 use crate::auth_hardened::AuthStatistics;
+use crate::containment::{ContainmentResult, ThreatLevel};
+use crate::nociception::{DamageState, PainSignal, PainType};
+use crate::observations::ObservationBatch;
 use crate::time::TimePoint;
 
 use std::collections::HashMap;
@@ -335,7 +335,8 @@ impl CefExporter {
         let events: Vec<String> = buffer.iter().map(|e| e.to_cef_string()).collect();
         let count = events.len();
         buffer.clear();
-        self.event_counter.fetch_add(count as u64, Ordering::Relaxed);
+        self.event_counter
+            .fetch_add(count as u64, Ordering::Relaxed);
         events
     }
 
@@ -402,9 +403,13 @@ impl CefExporter {
             CefSeverity::Notice
         };
 
-        let mut event = CefEvent::new(signatures::DAMAGE_ACCUMULATED, "Damage Accumulated", severity)
-            .with_extension("cfp1", damage.total)
-            .with_extension("cfp1Label", "total_damage");
+        let mut event = CefEvent::new(
+            signatures::DAMAGE_ACCUMULATED,
+            "Damage Accumulated",
+            severity,
+        )
+        .with_extension("cfp1", damage.total)
+        .with_extension("cfp1Label", "total_damage");
 
         if let Some(ref worst) = damage.worst_location {
             event = event
@@ -464,15 +469,19 @@ impl CefExporter {
             CefSeverity::Notice
         };
 
-        CefEvent::new(signatures::AUTH_SUCCESS, "Authentication Statistics", severity)
-            .with_extension("cn1", stats.total_authentications as i64)
-            .with_extension("cn1Label", "total_authentications")
-            .with_extension("cn2", stats.failed_authentications as i64)
-            .with_extension("cn2Label", "failed_authentications")
-            .with_extension("cn3", stats.active_sessions as i64)
-            .with_extension("cn3Label", "active_sessions")
-            .with_extension("cfp1", failure_rate)
-            .with_extension("cfp1Label", "failure_rate")
+        CefEvent::new(
+            signatures::AUTH_SUCCESS,
+            "Authentication Statistics",
+            severity,
+        )
+        .with_extension("cn1", stats.total_authentications as i64)
+        .with_extension("cn1Label", "total_authentications")
+        .with_extension("cn2", stats.failed_authentications as i64)
+        .with_extension("cn2Label", "failed_authentications")
+        .with_extension("cn3", stats.active_sessions as i64)
+        .with_extension("cn3Label", "active_sessions")
+        .with_extension("cfp1", failure_rate)
+        .with_extension("cfp1Label", "failure_rate")
     }
 
     /// Write events to a writer (file, socket, etc.)

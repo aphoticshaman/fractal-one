@@ -77,7 +77,7 @@ glob = "0.3"
 
 # Nucleation - phase transition detection for conflict early warning
 # Pinned to specific commit for reproducible builds
-nucleation = { git = "https://github.com/aphoticshaman/nucleation-wasm.git", rev = "409e75b", features = ["serialize"] }
+nucleation = { git = "https://github.com/aphoticshaman/nucleation-wasm.git", branch = "main", features = ["serialize"] }
 
 # URL encoding for API queries
 urlencoding = "2.1"

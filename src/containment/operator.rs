@@ -11,8 +11,7 @@ use crate::time::TimePoint;
 use std::collections::HashMap;
 
 /// Trust level for an operator
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub enum OperatorTrust {
     /// Unknown operator - lowest trust
     #[default]
@@ -27,10 +26,8 @@ pub enum OperatorTrust {
     Trusted,
 }
 
-
 /// Authentication level
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub enum AuthenticationLevel {
     /// No authentication
     #[default]
@@ -44,7 +41,6 @@ pub enum AuthenticationLevel {
     /// Multi-factor
     MultiFactor,
 }
-
 
 /// Fingerprint for identifying operators
 #[derive(Debug, Clone)]
@@ -436,12 +432,19 @@ impl TrustToken {
             &self.expires_at,
             secret,
         );
-        self.signature == expected && TimePoint::now().duration_since(&self.expires_at).as_millis() == 0
+        self.signature == expected
+            && TimePoint::now()
+                .duration_since(&self.expires_at)
+                .as_millis()
+                == 0
     }
 
     /// Check if token is expired
     pub fn is_expired(&self) -> bool {
-        TimePoint::now().duration_since(&self.expires_at).as_millis() > 0
+        TimePoint::now()
+            .duration_since(&self.expires_at)
+            .as_millis()
+            > 0
     }
 
     fn compute_signature(
@@ -608,7 +611,10 @@ impl TrustRegistry {
     }
 
     /// Request trust escalation (returns true if granted)
-    pub fn request_escalation(&mut self, request: TrustEscalationRequest) -> Result<TrustToken, TrustEscalationError> {
+    pub fn request_escalation(
+        &mut self,
+        request: TrustEscalationRequest,
+    ) -> Result<TrustToken, TrustEscalationError> {
         // Check if requested level is higher than current
         if request.requested_level <= request.current_level {
             return Err(TrustEscalationError::InvalidRequest(

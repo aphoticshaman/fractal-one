@@ -21,8 +21,8 @@
 //! Always validate assumptions before trusting outputs.
 //! ═══════════════════════════════════════════════════════════════════════════════
 
-use std::collections::VecDeque;
 use std::cmp::Ordering;
+use std::collections::VecDeque;
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // FLOAT COMPARISON — Safe sorting for f64

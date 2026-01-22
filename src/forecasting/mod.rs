@@ -29,24 +29,24 @@
 //! The system is a **differential factor detector** that emits forecasts as exhaust.
 //! ═══════════════════════════════════════════════════════════════════════════════
 
-pub mod salience;
-pub mod factor;
 pub mod evaluation;
+pub mod factor;
+pub mod salience;
 pub mod tracker;
 
-pub use salience::{
-    SalienceAnalysis, SalienceConfig, SalienceDetector, SalienceSignal,
-    SalienceLevel, BetSignal, BetDirection,
+pub use evaluation::{
+    BacktestResult, EvaluationResult, FactorOutcome, SalienceEvaluation, SalienceMetrics,
+    SaliencePrecision,
 };
 pub use factor::{
-    Factor, FactorWeight, FactorDifferential, FactorExtractor, FactorComparison,
-    MarketFactors, PodFactors,
+    Factor, FactorComparison, FactorDifferential, FactorExtractor, FactorWeight, MarketFactors,
+    PodFactors,
 };
-pub use evaluation::{
-    SalienceEvaluation, SalienceMetrics, FactorOutcome, SaliencePrecision,
-    EvaluationResult, BacktestResult,
+pub use salience::{
+    BetDirection, BetSignal, SalienceAnalysis, SalienceConfig, SalienceDetector, SalienceLevel,
+    SalienceSignal,
 };
 pub use tracker::{
-    SalienceTracker, TrackerConfig, ActivePrediction, ResolvedPrediction,
-    TrackerState, PerformanceSnapshot,
+    ActivePrediction, PerformanceSnapshot, ResolvedPrediction, SalienceTracker, TrackerConfig,
+    TrackerState,
 };

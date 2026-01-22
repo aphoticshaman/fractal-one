@@ -182,10 +182,7 @@ impl OcsfExporter {
 
     pub fn flush(&self) -> Vec<String> {
         let mut buffer = self.buffer.lock().unwrap();
-        let events: Vec<String> = buffer
-            .iter()
-            .filter_map(|e| e.to_json().ok())
-            .collect();
+        let events: Vec<String> = buffer.iter().filter_map(|e| e.to_json().ok()).collect();
         buffer.clear();
         events
     }

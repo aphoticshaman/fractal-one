@@ -192,7 +192,9 @@ fn main() -> Result<()> {
                     .arg(&validated_path)
                     .stdin(std::process::Stdio::piped())
                     .spawn()
-                    .map_err(|e| anyhow::anyhow!("Failed to run 'dot' command (install graphviz): {}", e))?;
+                    .map_err(|e| {
+                        anyhow::anyhow!("Failed to run 'dot' command (install graphviz): {}", e)
+                    })?;
 
                 if let Some(mut stdin) = child.stdin.take() {
                     stdin.write_all(dot.as_bytes())?;

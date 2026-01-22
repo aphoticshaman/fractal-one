@@ -108,10 +108,7 @@ impl From<AuthError> for FractalError {
 #[derive(Debug, Clone)]
 pub enum AuthorizationError {
     /// Insufficient authorization level
-    InsufficientLevel {
-        required: String,
-        actual: String,
-    },
+    InsufficientLevel { required: String, actual: String },
     /// Operation not permitted
     OperationNotPermitted(String),
     /// Resource access denied

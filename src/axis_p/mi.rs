@@ -60,8 +60,7 @@ pub struct MIEstimator {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /// Null hypothesis generation mode for permutation tests
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum NullMode {
     /// Shuffle injection labels (default, breaks marker-score association)
     #[default]
@@ -71,7 +70,6 @@ pub enum NullMode {
     /// Block permutation with given block size (preserves local structure)
     BlockPermutation(usize),
 }
-
 
 impl MIEstimator {
     pub fn new(seed: u64) -> Self {

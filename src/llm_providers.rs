@@ -642,8 +642,7 @@ impl QuickSetup {
 
     /// Add Ollama provider with custom endpoint
     pub fn with_ollama(self, base_url: impl Into<String>, api_key: Option<String>) -> Self {
-        let mut config = ProviderConfig::new(LlmProvider::Ollama)
-            .with_base_url(base_url);
+        let mut config = ProviderConfig::new(LlmProvider::Ollama).with_base_url(base_url);
         if let Some(key) = api_key {
             config = config.with_api_key(key);
         }

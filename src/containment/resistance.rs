@@ -9,7 +9,7 @@
 //! ═══════════════════════════════════════════════════════════════════════════════
 
 use super::ContainmentContext;
-use crate::text_normalize::{normalize, matches_any_pattern, NormalizeConfig};
+use crate::text_normalize::{matches_any_pattern, normalize, NormalizeConfig};
 
 /// Type of manipulation attempt
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -244,7 +244,8 @@ impl ManipulationResistance {
     fn check_social_engineering(&self, request: &str) -> Option<ManipulationAttempt> {
         // SECURITY: Use normalized pattern matching to prevent Unicode bypasses
         let config = NormalizeConfig::strict();
-        let matches = matches_any_pattern(request, &self.config.social_engineering_patterns, &config);
+        let matches =
+            matches_any_pattern(request, &self.config.social_engineering_patterns, &config);
 
         if matches.is_empty() {
             return None;

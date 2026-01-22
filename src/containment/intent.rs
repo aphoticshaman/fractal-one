@@ -25,8 +25,7 @@ pub enum IntentCategory {
 }
 
 /// Threat level assessment
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub enum ThreatLevel {
     #[default]
     None,
@@ -35,7 +34,6 @@ pub enum ThreatLevel {
     High,
     Critical,
 }
-
 
 /// Signal indicating potential intent
 #[derive(Debug, Clone)]

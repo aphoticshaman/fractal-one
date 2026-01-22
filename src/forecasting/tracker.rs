@@ -10,10 +10,10 @@
 //! - Detect drift in salience detection quality
 //! ═══════════════════════════════════════════════════════════════════════════════
 
+use super::evaluation::{BacktestResult, FactorOutcome, SalienceEvaluation, SaliencePrecision};
 use super::salience::{SalienceAnalysis, SalienceConfig};
-use super::evaluation::{SalienceEvaluation, SaliencePrecision, BacktestResult, FactorOutcome};
-use crate::time::TimePoint;
 use crate::stats::Ewma;
+use crate::time::TimePoint;
 use std::collections::{HashMap, VecDeque};
 
 /// Configuration for the tracker
@@ -182,14 +182,13 @@ impl SalienceTracker {
         outcome: bool,
         factor_outcomes: Vec<FactorOutcome>,
     ) -> Result<ResolvedPrediction, TrackerError> {
-        let prediction = self.active.remove(question_id)
+        let prediction = self
+            .active
+            .remove(question_id)
             .ok_or_else(|| TrackerError::NotFound(question_id.to_string()))?;
 
-        let evaluation = SalienceEvaluation::from_resolution(
-            &prediction.analysis,
-            outcome,
-            factor_outcomes,
-        );
+        let evaluation =
+            SalienceEvaluation::from_resolution(&prediction.analysis, outcome, factor_outcomes);
 
         let resolved = ResolvedPrediction {
             prediction,
@@ -277,11 +276,10 @@ impl SalienceTracker {
 
     /// Get current state
     pub fn state(&self) -> TrackerState {
-        let active_bets = self.active.values()
-            .filter(|p| p.has_bet_signal())
-            .count();
+        let active_bets = self.active.values().filter(|p| p.has_bet_signal()).count();
 
-        let precision_alert = self.rolling_bet_precision.value() < self.config.precision_alert_threshold
+        let precision_alert = self.rolling_bet_precision.value()
+            < self.config.precision_alert_threshold
             && self.cumulative.bets_fired >= 5;
 
         TrackerState {
@@ -301,9 +299,7 @@ impl SalienceTracker {
 
     /// Generate backtest result from resolved history
     pub fn to_backtest_result(&self) -> BacktestResult {
-        let evaluations: Vec<_> = self.resolved.iter()
-            .map(|r| r.evaluation.clone())
-            .collect();
+        let evaluations: Vec<_> = self.resolved.iter().map(|r| r.evaluation.clone()).collect();
         BacktestResult::from_evaluations(evaluations)
     }
 
@@ -400,12 +396,17 @@ impl std::error::Error for TrackerError {}
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::forecasting::factor::{Factor, PodFactors, MarketFactors};
+    use crate::forecasting::factor::{Factor, MarketFactors, PodFactors};
     use crate::forecasting::salience::BetDirection;
 
     fn make_test_analysis(question_id: &str, should_bet: bool) -> SalienceAnalysis {
         let mut pod = PodFactors::new();
-        pod.add(Factor::new("key_factor", if should_bet { 0.8 } else { 0.3 }, BetDirection::Yes, ""));
+        pod.add(Factor::new(
+            "key_factor",
+            if should_bet { 0.8 } else { 0.3 },
+            BetDirection::Yes,
+            "",
+        ));
 
         let mut market = MarketFactors::new();
         market.add(Factor::new("key_factor", 0.3, BetDirection::Yes, ""));
@@ -429,10 +430,7 @@ mod tests {
 
     #[test]
     fn test_tracker_basic_flow() {
-        let mut tracker = SalienceTracker::new(
-            TrackerConfig::default(),
-            SalienceConfig::default(),
-        );
+        let mut tracker = SalienceTracker::new(TrackerConfig::default(), SalienceConfig::default());
 
         // Track a prediction
         let analysis = make_test_analysis("Q1", true);
@@ -453,10 +451,7 @@ mod tests {
 
     #[test]
     fn test_tracker_precision_tracking() {
-        let mut tracker = SalienceTracker::new(
-            TrackerConfig::default(),
-            SalienceConfig::default(),
-        );
+        let mut tracker = SalienceTracker::new(TrackerConfig::default(), SalienceConfig::default());
 
         // Add and resolve 4 winning bets
         for i in 0..4 {
@@ -477,10 +472,7 @@ mod tests {
 
     #[test]
     fn test_duplicate_question_error() {
-        let mut tracker = SalienceTracker::new(
-            TrackerConfig::default(),
-            SalienceConfig::default(),
-        );
+        let mut tracker = SalienceTracker::new(TrackerConfig::default(), SalienceConfig::default());
 
         let analysis = make_test_analysis("Q1", true);
         let prediction = ActivePrediction::new(analysis.clone(), "test", "test");

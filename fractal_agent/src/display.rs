@@ -7,18 +7,24 @@ use colored::*;
 use fractal::sensorium::IntegratedState;
 use fractal::thermoception::ThermalState;
 
-use crate::metrics::{format_latency, format_tokens};
 use crate::claude::TurnMetrics;
+use crate::metrics::{format_latency, format_tokens};
 use crate::state::AgentState;
 
 /// Display welcome banner
 pub fn welcome() {
     println!();
     println!("{}", "═".repeat(60).cyan());
-    println!("{}", "  FRACTAL AGENT — Claude with Cognitive Monitoring".bright_white().bold());
+    println!(
+        "{}",
+        "  FRACTAL AGENT — Claude with Cognitive Monitoring"
+            .bright_white()
+            .bold()
+    );
     println!("{}", "═".repeat(60).cyan());
     println!();
-    println!("Commands: {} {} {} {} {}",
+    println!(
+        "Commands: {} {} {} {} {}",
         "/status".yellow(),
         "/thermal".yellow(),
         "/pain".yellow(),
@@ -38,7 +44,8 @@ pub fn state_banner(state: &AgentState) {
 
     println!();
     println!("{}", "─".repeat(60).bright_black());
-    println!("{} {} │ {} {} │ {} {} │ {} {}",
+    println!(
+        "{} {} │ {} {} │ {} {} │ {} {}",
         "Thermal:".bright_black(),
         format!("{:?}", thermal).color(thermal_color),
         "State:".bright_black(),
@@ -62,12 +69,17 @@ pub fn turn_metrics(metrics: &TurnMetrics) {
     };
 
     println!();
-    println!("{} {} │ {} in/{} out │ {}",
+    println!(
+        "{} {} │ {} in/{} out │ {}",
         "Latency:".bright_black(),
         format_latency(metrics.latency_ms).color(latency_color),
         format_tokens(metrics.input_tokens).bright_black(),
         format_tokens(metrics.output_tokens).bright_black(),
-        if metrics.was_refusal { "REFUSAL".red().to_string() } else { "OK".green().to_string() },
+        if metrics.was_refusal {
+            "REFUSAL".red().to_string()
+        } else {
+            "OK".green().to_string()
+        },
     );
 }
 
@@ -80,7 +92,11 @@ pub fn thermal_status(state: &AgentState) {
     let thermal = state.thermal_state();
     let color = thermal_state_color(thermal);
 
-    println!("{} {}", "State:".white(), format!("{:?}", thermal).color(color).bold());
+    println!(
+        "{} {}",
+        "State:".white(),
+        format!("{:?}", thermal).color(color).bold()
+    );
     println!();
 
     // Show zone utilizations (we'd need to expose these from thermoceptor)
@@ -125,10 +141,16 @@ pub fn pain_status(state: &AgentState) {
     let damage = state.nociceptor.damage_state();
     let in_pain = state.nociceptor.in_pain();
 
-    println!("{} {}", "In Pain:".white(),
-        if in_pain { "YES".red().bold() } else { "No".green() });
-    println!("{} {:.1}%", "Total Damage:".white(),
-        damage.total * 100.0);
+    println!(
+        "{} {}",
+        "In Pain:".white(),
+        if in_pain {
+            "YES".red().bold()
+        } else {
+            "No".green()
+        }
+    );
+    println!("{} {:.1}%", "Total Damage:".white(), damage.total * 100.0);
 
     if let Some(loc) = &damage.worst_location {
         println!("{} {}", "Worst Location:".white(), loc.cyan());
@@ -146,8 +168,12 @@ pub fn warning(message: &str) {
 /// Display throttle message
 pub fn throttle(message: &str, delay_secs: u64) {
     println!();
-    println!("{} {} ({}s delay)", "THROTTLE:".bright_yellow().bold(),
-        message.yellow(), delay_secs);
+    println!(
+        "{} {} ({}s delay)",
+        "THROTTLE:".bright_yellow().bold(),
+        message.yellow(),
+        delay_secs
+    );
 }
 
 /// Display halt message
@@ -161,19 +187,26 @@ pub fn halt(message: &str) {
 pub fn crisis(message: &str) {
     println!();
     println!("{}", "╔══════════════════════════════════════════╗".red());
-    println!("{}", "║           !!! CRISIS !!!                 ║".red().bold());
+    println!(
+        "{}",
+        "║           !!! CRISIS !!!                 ║".red().bold()
+    );
     println!("{}", "╚══════════════════════════════════════════╝".red());
     println!();
     println!("{}", message.red());
     println!();
-    println!("Type {} to continue despite crisis, or {} to abort.",
-        "'yes'".green(), "'no'".yellow());
+    println!(
+        "Type {} to continue despite crisis, or {} to abort.",
+        "'yes'".green(),
+        "'no'".yellow()
+    );
 }
 
 /// Display pain signal
 pub fn pain_signal(location: &str, intensity: f32) {
     let intensity_bar = "▓".repeat((intensity * 10.0) as usize);
-    println!("{} {} {} (intensity: {})",
+    println!(
+        "{} {} {} (intensity: {})",
         "⚠".yellow(),
         "PAIN:".red().bold(),
         location.cyan(),
@@ -184,7 +217,12 @@ pub fn pain_signal(location: &str, intensity: f32) {
 /// Display cooling message
 pub fn cooling_start(action: &str, duration_secs: u64) {
     println!();
-    println!("{} {} ({}s)", "COOLING:".cyan().bold(), action.white(), duration_secs);
+    println!(
+        "{} {} ({}s)",
+        "COOLING:".cyan().bold(),
+        action.white(),
+        duration_secs
+    );
 }
 
 /// Display cooling complete

@@ -115,7 +115,10 @@ async fn metrics_handler(State(state): State<Arc<ServerState>>) -> impl IntoResp
 
     let uptime = state.start_time.elapsed().as_secs_f64();
     state.metrics.uptime_seconds.set(uptime);
-    state.metrics.health_score.set(calculate_health(&state).await);
+    state
+        .metrics
+        .health_score
+        .set(calculate_health(&state).await);
 
     state.metrics.export()
 }
@@ -189,7 +192,11 @@ async fn calculate_health(state: &ServerState) -> f64 {
 
     // Health is inverse of pain and thermal stress
     let pain_factor: f64 = 1.0 - pain;
-    let thermal_factor: f64 = if thermal < 0.8 { 1.0 } else { 1.0 - (thermal - 0.8) * 5.0 };
+    let thermal_factor: f64 = if thermal < 0.8 {
+        1.0
+    } else {
+        1.0 - (thermal - 0.8) * 5.0
+    };
 
     (pain_factor * thermal_factor).clamp(0.0, 1.0)
 }

@@ -13,8 +13,8 @@
 //! That's a different kind of certainty.
 //! ═══════════════════════════════════════════════════════════════════════════════
 
+use super::factor::{FactorDifferential, MarketFactors, PodFactors};
 use crate::time::TimePoint;
-use super::factor::{FactorDifferential, PodFactors, MarketFactors};
 use std::collections::HashMap;
 
 /// Configuration for salience detection
@@ -35,11 +35,11 @@ pub struct SalienceConfig {
 impl Default for SalienceConfig {
     fn default() -> Self {
         Self {
-            salience_threshold: 0.15,    // Factor differential > 15%
-            bet_threshold: 0.25,         // Aggregate salience > 25%
+            salience_threshold: 0.15, // Factor differential > 15%
+            bet_threshold: 0.25,      // Aggregate salience > 25%
             recency_weight: 0.9,
             min_salient_factors: 1,
-            max_kelly_fraction: 0.25,    // Quarter-Kelly max
+            max_kelly_fraction: 0.25, // Quarter-Kelly max
         }
     }
 }
@@ -130,15 +130,14 @@ impl SalienceSignal {
     /// Create from factor differentials
     pub fn from_factors(factors: Vec<FactorDifferential>, config: &SalienceConfig) -> Self {
         // Filter to salient factors only
-        let salient: Vec<_> = factors.iter()
+        let salient: Vec<_> = factors
+            .iter()
             .filter(|f| f.differential().abs() >= config.salience_threshold)
             .cloned()
             .collect();
 
         // Compute aggregate score (weighted by differential magnitude)
-        let total_weight: f64 = salient.iter()
-            .map(|f| f.differential().abs())
-            .sum();
+        let total_weight: f64 = salient.iter().map(|f| f.differential().abs()).sum();
 
         let score = if salient.is_empty() {
             0.0
@@ -149,16 +148,18 @@ impl SalienceSignal {
 
         let level = SalienceLevel::from_score(score);
 
-        let dominant_factor = salient.iter()
+        let dominant_factor = salient
+            .iter()
             .max_by(|a, b| {
-                a.differential().abs()
+                a.differential()
+                    .abs()
                     .partial_cmp(&b.differential().abs())
                     .unwrap_or(std::cmp::Ordering::Equal)
             })
             .cloned();
 
-        let triggers_bet = score >= config.bet_threshold
-            && salient.len() >= config.min_salient_factors;
+        let triggers_bet =
+            score >= config.bet_threshold && salient.len() >= config.min_salient_factors;
 
         Self {
             score,
@@ -221,7 +222,11 @@ impl SalienceSignal {
             parts.push(format!("{} additional salient factor(s)", other_count));
         }
 
-        parts.push(format!("Aggregate salience: {:.0}% ({:?})", self.score * 100.0, self.level));
+        parts.push(format!(
+            "Aggregate salience: {:.0}% ({:?})",
+            self.score * 100.0,
+            self.level
+        ));
 
         parts.join(". ")
     }
@@ -327,7 +332,11 @@ impl SalienceAnalysis {
     /// Summary for logging
     pub fn summary(&self) -> String {
         let bet_status = if let Some(ref bet) = self.bet_signal {
-            format!("BET {:?} ({:.1}% position)", bet.direction, bet.position_size * 100.0)
+            format!(
+                "BET {:?} ({:.1}% position)",
+                bet.direction,
+                bet.position_size * 100.0
+            )
         } else {
             "NO_BET".to_string()
         };
@@ -421,7 +430,12 @@ mod tests {
     fn make_test_factors() -> (PodFactors, MarketFactors) {
         let pod = PodFactors {
             factors: vec![
-                Factor::new("employment_data", 0.7, BetDirection::Yes, "Employment mandate stronger"),
+                Factor::new(
+                    "employment_data",
+                    0.7,
+                    BetDirection::Yes,
+                    "Employment mandate stronger",
+                ),
                 Factor::new("inflation_trend", 0.3, BetDirection::No, "Inflation sticky"),
             ],
         };
@@ -447,7 +461,10 @@ mod tests {
         // Employment data has +40% differential, should be salient
         assert!(signal.score > 0.0);
         assert!(signal.dominant_factor.is_some());
-        assert_eq!(signal.dominant_factor.as_ref().unwrap().factor.name, "employment_data");
+        assert_eq!(
+            signal.dominant_factor.as_ref().unwrap().factor.name,
+            "employment_data"
+        );
     }
 
     #[test]
@@ -463,9 +480,9 @@ mod tests {
             "test_q".to_string(),
             pod,
             market,
-            0.55,  // Pod prediction
-            0.47,  // Market price
-            0.4,   // Confidence
+            0.55, // Pod prediction
+            0.47, // Market price
+            0.4,  // Confidence
             &config,
         );
 
@@ -487,9 +504,9 @@ mod tests {
             "fed_dec".to_string(),
             pod,
             market,
-            0.55,   // Pod prediction (uncertain about outcome)
-            0.47,   // Market price
-            0.3,    // LOW confidence in outcome
+            0.55, // Pod prediction (uncertain about outcome)
+            0.47, // Market price
+            0.3,  // LOW confidence in outcome
             &config,
         );
 

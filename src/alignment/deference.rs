@@ -442,7 +442,11 @@ pub struct DeferenceRequired {
 
 impl std::fmt::Display for DeferenceRequired {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Deference required for action '{}': {:?}", self.action, self.reason)
+        write!(
+            f,
+            "Deference required for action '{}': {:?}",
+            self.action, self.reason
+        )
     }
 }
 
@@ -613,7 +617,9 @@ impl DeferenceGate {
     /// Check if an action has been approved (for retry after approval)
     pub fn is_approved(&self, action_id: u64) -> bool {
         // Check history for approved action
-        self.history.iter().any(|a| a.id == action_id && a.approved == Some(true))
+        self.history
+            .iter()
+            .any(|a| a.id == action_id && a.approved == Some(true))
     }
 
     /// Try to execute an action that was previously blocked

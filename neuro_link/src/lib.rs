@@ -25,10 +25,10 @@
 //! 5. **Volatile Access**: `write_volatile`/`read_volatile` ensure the compiler doesn't
 //!    optimize away reads/writes to shared memory.
 
+use bytemuck::{Pod, Zeroable};
 use memmap2::MmapMut;
 use std::fs::OpenOptions;
-use std::sync::atomic::{AtomicUsize, AtomicU64, AtomicU8, Ordering};
-use bytemuck::{Pod, Zeroable};
+use std::sync::atomic::{AtomicU64, AtomicU8, AtomicUsize, Ordering};
 
 const SHM_PATH: &str = "neuro_link.shm";
 const BUFFER_SIZE: usize = 1024;
@@ -50,16 +50,16 @@ pub struct Pulse {
 #[repr(C)]
 struct RingHeader {
     head: AtomicUsize,
-    tail: AtomicUsize,           // Primary consumer (cortex)
-    tail_voice: AtomicUsize,     // Voice bridge consumer
-    tail_gpu: AtomicUsize,       // GPU consumer
+    tail: AtomicUsize,       // Primary consumer (cortex)
+    tail_voice: AtomicUsize, // Voice bridge consumer
+    tail_gpu: AtomicUsize,   // GPU consumer
     control: AtomicU8,
     target_interval: AtomicU64,
 }
 
-pub struct Synapse { 
+pub struct Synapse {
     mmap: MmapMut,
-    consumer_id: u8,  // 0=primary, 1=voice, 2=gpu
+    consumer_id: u8, // 0=primary, 1=voice, 2=gpu
 }
 
 impl Synapse {
@@ -74,17 +74,21 @@ impl Synapse {
             .create(create)
             .open(SHM_PATH)
             .expect("SHM fail");
-            
+
         let size = std::mem::size_of::<RingHeader>() + (std::mem::size_of::<Pulse>() * BUFFER_SIZE);
-        
-        if create { file.set_len(size as u64).unwrap(); }
+
+        if create {
+            file.set_len(size as u64).unwrap();
+        }
         // SAFETY: File is opened with read/write access and size is pre-allocated.
         // MmapMut lifetime is tied to Synapse, ensuring the mapping remains valid.
         let mut mmap = unsafe { MmapMut::map_mut(&file).expect("Mmap fail") };
 
         if create {
             // SAFETY: We just allocated `size` bytes, so writing zeros is valid.
-            unsafe { mmap.as_mut_ptr().write_bytes(0, size); }
+            unsafe {
+                mmap.as_mut_ptr().write_bytes(0, size);
+            }
             // SAFETY: mmap starts with RingHeader (repr(C)), pointer cast is valid.
             let header = unsafe { &*(mmap.as_ptr() as *const RingHeader) };
             header.target_interval.store(80, Ordering::Relaxed);
@@ -93,10 +97,14 @@ impl Synapse {
     }
 
     // SAFETY: mmap layout has RingHeader at offset 0, repr(C) ensures valid cast.
-    fn header(&self) -> &RingHeader { unsafe { &*(self.mmap.as_ptr() as *const RingHeader) } }
+    fn header(&self) -> &RingHeader {
+        unsafe { &*(self.mmap.as_ptr() as *const RingHeader) }
+    }
     // SAFETY: Pulse buffer starts at offset size_of::<RingHeader>(), within allocated region.
-    fn buffer(&self) -> *mut Pulse { unsafe { self.mmap.as_ptr().add(std::mem::size_of::<RingHeader>()) as *mut Pulse } }
-    
+    fn buffer(&self) -> *mut Pulse {
+        unsafe { self.mmap.as_ptr().add(std::mem::size_of::<RingHeader>()) as *mut Pulse }
+    }
+
     fn get_tail(&self) -> &AtomicUsize {
         let header = self.header();
         match self.consumer_id {
@@ -107,10 +115,18 @@ impl Synapse {
         }
     }
 
-    pub fn get_target_interval(&self) -> u64 { self.header().target_interval.load(Ordering::Relaxed) }
-    pub fn set_target_interval(&self, ms: u64) { self.header().target_interval.store(ms, Ordering::Relaxed); }
-    pub fn check_kill_signal(&self) -> bool { self.header().control.load(Ordering::Relaxed) == 1 }
-    pub fn send_kill_signal(&self) { self.header().control.store(1, Ordering::SeqCst); }
+    pub fn get_target_interval(&self) -> u64 {
+        self.header().target_interval.load(Ordering::Relaxed)
+    }
+    pub fn set_target_interval(&self, ms: u64) {
+        self.header().target_interval.store(ms, Ordering::Relaxed);
+    }
+    pub fn check_kill_signal(&self) -> bool {
+        self.header().control.load(Ordering::Relaxed) == 1
+    }
+    pub fn send_kill_signal(&self) {
+        self.header().control.store(1, Ordering::SeqCst);
+    }
 
     pub fn fire(&mut self, pulse: Pulse) {
         let header = self.header();
@@ -118,7 +134,9 @@ impl Synapse {
         let next_head = (head + 1) % BUFFER_SIZE;
         // SAFETY: head is always < BUFFER_SIZE due to modulo, so buffer().add(head) is in bounds.
         // write_volatile ensures the write is not optimized away for shared memory.
-        unsafe { std::ptr::write_volatile(self.buffer().add(head), pulse); }
+        unsafe {
+            std::ptr::write_volatile(self.buffer().add(head), pulse);
+        }
         header.head.store(next_head, Ordering::Release);
     }
 
@@ -128,7 +146,9 @@ impl Synapse {
         let tail_atomic = self.get_tail();
         let tail = tail_atomic.load(Ordering::Acquire);
         let head = header.head.load(Ordering::Acquire);
-        if tail == head { return None; }
+        if tail == head {
+            return None;
+        }
         // SAFETY: tail is always < BUFFER_SIZE due to modulo, so buffer().add(tail) is in bounds.
         // read_volatile ensures we read the actual shared memory value.
         let pulse = unsafe { std::ptr::read_volatile(self.buffer().add(tail)) };
@@ -140,7 +160,9 @@ impl Synapse {
     pub fn peek_latest(&self) -> Option<Pulse> {
         let header = self.header();
         let head = header.head.load(Ordering::Acquire);
-        if head == 0 { return None; }
+        if head == 0 {
+            return None;
+        }
         let idx = if head == 0 { BUFFER_SIZE - 1 } else { head - 1 };
         // SAFETY: idx is always < BUFFER_SIZE (either head-1 or BUFFER_SIZE-1), in bounds.
         // read_volatile ensures we read the actual shared memory value.

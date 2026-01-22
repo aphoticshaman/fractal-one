@@ -297,13 +297,7 @@ impl AuditTrail {
             AuditOutcome::Denied
         };
 
-        self.log_event(
-            AuditCategory::Modification,
-            outcome,
-            actor,
-            action,
-            details,
-        );
+        self.log_event(AuditCategory::Modification, outcome, actor, action, details);
     }
 
     /// Log a boundary violation

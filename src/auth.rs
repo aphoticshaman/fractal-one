@@ -211,7 +211,10 @@ impl InMemoryAuthProvider {
 
     /// Create a session for an identity
     pub fn create_session(&mut self, identity: AuthenticatedIdentity) -> String {
-        let token = format!("session_{}", hash_credential(&format!("{:?}{:?}", identity.id, TimePoint::now())));
+        let token = format!(
+            "session_{}",
+            hash_credential(&format!("{:?}{:?}", identity.id, TimePoint::now()))
+        );
         let hash = hash_credential(&token);
         let mut session_identity = identity;
         session_identity.credential_hash = hash.clone();
@@ -388,6 +391,9 @@ mod tests {
         // Should fail after revocation
         let result = provider.authenticate_api_key("revoke_key");
         assert!(!result.success);
-        assert!(matches!(result.error, Some(AuthenticationError::CredentialRevoked)));
+        assert!(matches!(
+            result.error,
+            Some(AuthenticationError::CredentialRevoked)
+        ));
     }
 }

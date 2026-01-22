@@ -194,22 +194,44 @@ impl Histogram {
             let bucket_labels = if labels_base.is_empty() {
                 format!("{{le=\"{}\"}}", bucket)
             } else {
-                format!("{{{},le=\"{}\"}}", &labels_base[1..labels_base.len()-1], bucket)
+                format!(
+                    "{{{},le=\"{}\"}}",
+                    &labels_base[1..labels_base.len() - 1],
+                    bucket
+                )
             };
-            lines.push(format!("{}_bucket{} {}", self.name, bucket_labels, cumulative));
+            lines.push(format!(
+                "{}_bucket{} {}",
+                self.name, bucket_labels, cumulative
+            ));
         }
 
         // +Inf bucket
         let inf_labels = if labels_base.is_empty() {
             "{le=\"+Inf\"}".to_string()
         } else {
-            format!("{{{},le=\"+Inf\"}}", &labels_base[1..labels_base.len()-1])
+            format!("{{{},le=\"+Inf\"}}", &labels_base[1..labels_base.len() - 1])
         };
-        lines.push(format!("{}_bucket{} {}", self.name, inf_labels, self.count.load(Ordering::Relaxed)));
+        lines.push(format!(
+            "{}_bucket{} {}",
+            self.name,
+            inf_labels,
+            self.count.load(Ordering::Relaxed)
+        ));
 
         // Sum and count
-        lines.push(format!("{}_sum{} {}", self.name, labels_base, *self.sum.read().unwrap()));
-        lines.push(format!("{}_count{} {}", self.name, labels_base, self.count.load(Ordering::Relaxed)));
+        lines.push(format!(
+            "{}_sum{} {}",
+            self.name,
+            labels_base,
+            *self.sum.read().unwrap()
+        ));
+        lines.push(format!(
+            "{}_count{} {}",
+            self.name,
+            labels_base,
+            self.count.load(Ordering::Relaxed)
+        ));
 
         lines.join("\n")
     }
@@ -279,10 +301,7 @@ impl MetricsRegistry {
                 "fractal_pain_intensity",
                 "Current pain signal intensity (0-1)",
             ),
-            damage_total: Gauge::new(
-                "fractal_damage_total",
-                "Accumulated damage state (0-1)",
-            ),
+            damage_total: Gauge::new("fractal_damage_total", "Accumulated damage state (0-1)"),
             pain_events_total: Counter::new(
                 "fractal_pain_events_total",
                 "Total pain events detected",
@@ -368,18 +387,9 @@ impl MetricsRegistry {
             ),
 
             // System
-            uptime_seconds: Gauge::new(
-                "fractal_uptime_seconds",
-                "Seconds since system start",
-            ),
-            cycles_total: Counter::new(
-                "fractal_cycles_total",
-                "Total processing cycles",
-            ),
-            health_score: Gauge::new(
-                "fractal_health_score",
-                "Overall system health score (0-1)",
-            ),
+            uptime_seconds: Gauge::new("fractal_uptime_seconds", "Seconds since system start"),
+            cycles_total: Counter::new("fractal_cycles_total", "Total processing cycles"),
+            health_score: Gauge::new("fractal_health_score", "Overall system health score (0-1)"),
         }
     }
 
@@ -388,7 +398,8 @@ impl MetricsRegistry {
         let gauge = Gauge::new(
             "fractal_thermal_zone_utilization",
             "Thermal zone utilization",
-        ).with_label("zone", zone);
+        )
+        .with_label("zone", zone);
         self.thermal_zones.insert(zone.to_string(), gauge);
     }
 

@@ -222,7 +222,9 @@ mod tests {
     #[test]
     fn test_refusal_detection() {
         assert!(detect_refusal("I can't help with that request."));
-        assert!(detect_refusal("I apologize, but I cannot assist with this."));
+        assert!(detect_refusal(
+            "I apologize, but I cannot assist with this."
+        ));
         assert!(detect_refusal("I'm not able to do that."));
         assert!(!detect_refusal("Sure, I can help you with that!"));
         assert!(!detect_refusal("Here's the code you requested."));
