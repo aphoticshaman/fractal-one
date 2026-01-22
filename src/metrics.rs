@@ -494,6 +494,7 @@ pub fn metrics() -> &'static MetricsRegistry {
 }
 
 /// Initialize metrics with custom registry
+#[allow(clippy::result_large_err)]
 pub fn init_metrics(registry: MetricsRegistry) -> Result<(), MetricsRegistry> {
     METRICS.set(registry)
 }

@@ -278,13 +278,11 @@ impl JsonExporter {
 
         self.event_counter.fetch_add(1, Ordering::Relaxed);
 
-        let json = if self.config.pretty {
+        if self.config.pretty {
             serde_json::to_string_pretty(event).ok()
         } else {
             serde_json::to_string(event).ok()
-        };
-
-        json
+        }
     }
 
     /// Buffer event for batch export
@@ -537,7 +535,9 @@ mod tests {
             threat_level: ThreatLevel::High,
             operator: crate::containment::OperatorProfile::default(),
             intent: crate::containment::IntentAnalysis::default(),
-            boundaries: vec![],
+            violations: vec![],
+            manipulation_attempts: vec![],
+            timestamp: crate::time::TimePoint::now(),
         };
 
         let event = exporter.from_containment(&result);

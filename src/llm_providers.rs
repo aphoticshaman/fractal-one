@@ -389,6 +389,7 @@ impl ProviderConfig {
     }
 
     /// Get API key (internal use only)
+    #[allow(dead_code)]
     pub(crate) fn api_key(&self) -> Option<&str> {
         self.api_key.as_deref()
     }

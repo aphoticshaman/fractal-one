@@ -112,6 +112,7 @@ impl HardenedAuthConfig {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /// Securely stored credential with metadata
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 struct StoredCredential {
     /// Identity this credential authenticates
@@ -133,6 +134,7 @@ struct StoredCredential {
 }
 
 /// Session token with metadata
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 struct SessionToken {
     /// The token value (HMAC of identity + timestamp + nonce)
@@ -237,7 +239,7 @@ impl HardenedAuthProvider {
 
         let mut identity = identity;
         identity.credential_type = CredentialType::ApiKey;
-        identity.credential_hash = hex::encode(&key_hash);
+        identity.credential_hash = hex::encode(key_hash);
         identity.verified_at = TimePoint::now();
 
         let expires_at = self.config.api_key_duration.map(|d| {
@@ -296,7 +298,7 @@ impl HardenedAuthProvider {
         sessions.insert(token_hash, session);
 
         // Return base64-encoded token
-        format!("{}:{}", BASE64.encode(&token_hash), BASE64.encode(&nonce))
+        format!("{}:{}", BASE64.encode(token_hash), BASE64.encode(nonce))
     }
 
     /// Hash an API key using SHA-256 (for lookup)
@@ -356,8 +358,8 @@ impl HardenedAuthProvider {
         // Return as PHC-like string for consistency
         Ok(format!(
             "$pbkdf2-sha256$i=600000${}${}",
-            BASE64.encode(&salt),
-            BASE64.encode(&derived_key)
+            BASE64.encode(salt),
+            BASE64.encode(derived_key)
         ))
     }
 
