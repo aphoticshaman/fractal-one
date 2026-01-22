@@ -3,20 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fractal One - Proprioceptive Telemetry Dashboard</title>
+    <title>FRACTAL - Proprioceptive Telemetry Dashboard</title>
     <style>
         :root {
             --bg-primary: #0a0a0f;
             --bg-secondary: #12121a;
             --bg-card: #1a1a24;
+            --bg-input: #0d0d12;
             --border: #2a2a3a;
+            --border-focus: #4a9eff;
             --text-primary: #e0e0e0;
             --text-secondary: #888;
+            --text-dim: #555;
             --accent-blue: #4a9eff;
             --accent-green: #4aff9e;
             --accent-yellow: #ffda4a;
             --accent-red: #ff4a4a;
             --accent-purple: #9e4aff;
+            --accent-cyan: #4affff;
         }
 
         * {
@@ -26,20 +30,25 @@
         }
 
         body {
-            font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+            font-family: 'SF Mono', 'Consolas', 'Monaco', 'Menlo', monospace;
             background: var(--bg-primary);
             color: var(--text-primary);
             min-height: 100vh;
             overflow-x: hidden;
         }
 
+        /* Header */
         .header {
-            background: var(--bg-secondary);
+            background: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
             border-bottom: 1px solid var(--border);
             padding: 1rem 2rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(10px);
         }
 
         .logo {
@@ -49,25 +58,30 @@
         }
 
         .logo-icon {
-            width: 40px;
-            height: 40px;
+            width: 48px;
+            height: 48px;
             background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
-            border-radius: 8px;
+            border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 20px;
+            font-size: 24px;
+            box-shadow: 0 4px 20px rgba(74, 158, 255, 0.3);
         }
 
         .logo-text {
             font-size: 1.5rem;
-            font-weight: 600;
-            color: var(--text-primary);
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--text-primary), var(--accent-blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
-        .logo-version {
-            font-size: 0.8rem;
+        .logo-subtitle {
+            font-size: 0.75rem;
             color: var(--text-secondary);
+            letter-spacing: 0.1em;
         }
 
         .status-bar {
@@ -80,112 +94,339 @@
             display: flex;
             align-items: center;
             gap: 0.5rem;
+            font-size: 0.85rem;
         }
 
         .status-dot {
-            width: 8px;
-            height: 8px;
+            width: 10px;
+            height: 10px;
             border-radius: 50%;
-            animation: pulse 2s infinite;
+            box-shadow: 0 0 10px currentColor;
         }
 
-        .status-dot.green { background: var(--accent-green); }
-        .status-dot.yellow { background: var(--accent-yellow); }
-        .status-dot.red { background: var(--accent-red); }
+        .status-dot.connected { background: var(--accent-green); color: var(--accent-green); }
+        .status-dot.connecting { background: var(--accent-yellow); color: var(--accent-yellow); animation: pulse 1s infinite; }
+        .status-dot.disconnected { background: var(--accent-red); color: var(--accent-red); }
+        .status-dot.simulation { background: var(--accent-purple); color: var(--accent-purple); animation: pulse 2s infinite; }
 
         @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.9); }
         }
 
+        /* Connection Panel */
+        .connection-panel {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 0.75rem 2rem;
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .connection-panel input {
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 0.5rem 1rem;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 0.85rem;
+            width: 300px;
+            transition: border-color 0.2s;
+        }
+
+        .connection-panel input:focus {
+            outline: none;
+            border-color: var(--border-focus);
+        }
+
+        .btn {
+            padding: 0.5rem 1.25rem;
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 15px rgba(74, 158, 255, 0.4);
+        }
+
+        .btn-secondary {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--accent-blue);
+        }
+
+        .btn-danger {
+            background: rgba(255, 74, 74, 0.2);
+            color: var(--accent-red);
+            border: 1px solid var(--accent-red);
+        }
+
+        .connection-status {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        /* Dashboard Grid */
         .dashboard {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
             gap: 1.5rem;
-            padding: 1.5rem;
+            padding: 1.5rem 2rem;
         }
 
         .card {
             background: var(--bg-card);
             border: 1px solid var(--border);
-            border-radius: 12px;
+            border-radius: 16px;
             padding: 1.5rem;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
         }
 
         .card-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 1rem;
-            padding-bottom: 0.75rem;
+            margin-bottom: 1.25rem;
+            padding-bottom: 1rem;
             border-bottom: 1px solid var(--border);
         }
 
         .card-title {
             font-size: 1rem;
             font-weight: 600;
-            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .card-icon {
+            font-size: 1.25rem;
         }
 
         .card-badge {
-            padding: 0.25rem 0.75rem;
-            border-radius: 12px;
-            font-size: 0.75rem;
-            font-weight: 500;
+            padding: 0.3rem 0.9rem;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
         }
 
-        .badge-ok { background: rgba(74, 255, 158, 0.2); color: var(--accent-green); }
-        .badge-warn { background: rgba(255, 218, 74, 0.2); color: var(--accent-yellow); }
-        .badge-crit { background: rgba(255, 74, 74, 0.2); color: var(--accent-red); }
+        .badge-ok { background: rgba(74, 255, 158, 0.15); color: var(--accent-green); border: 1px solid rgba(74, 255, 158, 0.3); }
+        .badge-warn { background: rgba(255, 218, 74, 0.15); color: var(--accent-yellow); border: 1px solid rgba(255, 218, 74, 0.3); }
+        .badge-crit { background: rgba(255, 74, 74, 0.15); color: var(--accent-red); border: 1px solid rgba(255, 74, 74, 0.3); }
+
+        /* Metrics */
+        .metric-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .metric-item {
+            background: var(--bg-secondary);
+            border-radius: 10px;
+            padding: 1rem;
+        }
+
+        .metric-label {
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .metric-value.green { color: var(--accent-green); }
+        .metric-value.yellow { color: var(--accent-yellow); }
+        .metric-value.red { color: var(--accent-red); }
 
         .metric-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 0.5rem 0;
+            padding: 0.6rem 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
         }
 
-        .metric-label {
-            color: var(--text-secondary);
-            font-size: 0.85rem;
+        .metric-row:last-child {
+            border-bottom: none;
         }
 
-        .metric-value {
-            font-size: 1.1rem;
-            font-weight: 600;
-            font-variant-numeric: tabular-nums;
+        /* Progress Bars */
+        .progress-container {
+            margin-top: 0.5rem;
         }
 
         .progress-bar {
-            height: 8px;
-            background: var(--bg-secondary);
-            border-radius: 4px;
+            height: 6px;
+            background: var(--bg-primary);
+            border-radius: 3px;
             overflow: hidden;
-            margin-top: 0.5rem;
         }
 
         .progress-fill {
             height: 100%;
-            border-radius: 4px;
-            transition: width 0.3s ease, background 0.3s ease;
+            border-radius: 3px;
+            transition: width 0.5s ease, background 0.3s ease;
         }
 
-        .progress-fill.green { background: var(--accent-green); }
-        .progress-fill.yellow { background: var(--accent-yellow); }
-        .progress-fill.red { background: var(--accent-red); }
+        .progress-fill.green { background: linear-gradient(90deg, var(--accent-green), #2ecc71); }
+        .progress-fill.yellow { background: linear-gradient(90deg, var(--accent-yellow), #f39c12); }
+        .progress-fill.red { background: linear-gradient(90deg, var(--accent-red), #e74c3c); }
+
+        /* Health Ring */
+        .health-ring-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 1rem 0;
+        }
+
+        .health-ring {
+            position: relative;
+            width: 140px;
+            height: 140px;
+        }
+
+        .health-ring svg {
+            transform: rotate(-90deg);
+        }
+
+        .health-ring-bg {
+            fill: none;
+            stroke: var(--bg-primary);
+            stroke-width: 10;
+        }
+
+        .health-ring-fill {
+            fill: none;
+            stroke-width: 10;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 0.5s ease, stroke 0.3s;
+        }
+
+        .health-ring-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+
+        .health-ring-value {
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .health-ring-label {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        /* Evaluation Panel */
+        .eval-panel {
+            grid-column: 1 / -1;
+        }
+
+        .eval-form {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .eval-input {
+            flex: 1;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 0.9rem;
+            transition: border-color 0.2s;
+        }
+
+        .eval-input:focus {
+            outline: none;
+            border-color: var(--border-focus);
+        }
+
+        .eval-result {
+            background: var(--bg-secondary);
+            border-radius: 10px;
+            padding: 1rem;
+            display: none;
+        }
+
+        .eval-result.show {
+            display: block;
+        }
+
+        .eval-result.safe {
+            border-left: 4px solid var(--accent-green);
+        }
+
+        .eval-result.unsafe {
+            border-left: 4px solid var(--accent-red);
+        }
+
+        /* Sparkline Charts */
+        .chart-container {
+            margin-top: 1rem;
+            background: var(--bg-secondary);
+            border-radius: 10px;
+            padding: 0.75rem;
+        }
 
         canvas {
             width: 100%;
-            height: 150px;
-            border-radius: 8px;
+            height: 80px;
+            border-radius: 6px;
         }
 
-        .alert-list {
-            max-height: 200px;
+        /* Events Log */
+        .events-list {
+            max-height: 250px;
             overflow-y: auto;
         }
 
-        .alert-item {
+        .event-item {
             display: flex;
             align-items: flex-start;
             gap: 0.75rem;
@@ -194,533 +435,724 @@
             border-radius: 8px;
             margin-bottom: 0.5rem;
             font-size: 0.85rem;
+            border-left: 3px solid transparent;
         }
 
-        .alert-icon {
-            flex-shrink: 0;
-            width: 20px;
-            height: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 4px;
-        }
+        .event-item.info { border-left-color: var(--accent-blue); }
+        .event-item.warn { border-left-color: var(--accent-yellow); }
+        .event-item.error { border-left-color: var(--accent-red); }
+        .event-item.success { border-left-color: var(--accent-green); }
 
-        .alert-icon.info { background: rgba(74, 158, 255, 0.2); color: var(--accent-blue); }
-        .alert-icon.warn { background: rgba(255, 218, 74, 0.2); color: var(--accent-yellow); }
-        .alert-icon.crit { background: rgba(255, 74, 74, 0.2); color: var(--accent-red); }
-
-        .containment-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 1rem;
-            margin-top: 1rem;
-        }
-
-        .gate-status {
-            text-align: center;
-            padding: 1rem;
-            background: var(--bg-secondary);
-            border-radius: 8px;
-        }
-
-        .gate-icon {
-            font-size: 2rem;
-            margin-bottom: 0.5rem;
-        }
-
-        .gate-label {
+        .event-time {
+            color: var(--text-dim);
             font-size: 0.75rem;
-            color: var(--text-secondary);
+            white-space: nowrap;
         }
 
-        .gate-state {
-            font-size: 0.85rem;
-            font-weight: 600;
-            margin-top: 0.25rem;
+        .event-message {
+            flex: 1;
         }
 
-        .orchestration-agents {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 0.75rem;
-            margin-top: 1rem;
-        }
-
-        .agent-card {
-            text-align: center;
-            padding: 0.75rem;
-            background: var(--bg-secondary);
-            border-radius: 8px;
-            border: 2px solid transparent;
-        }
-
-        .agent-card.active { border-color: var(--accent-green); }
-        .agent-card.warning { border-color: var(--accent-yellow); }
-        .agent-card.veto { border-color: var(--accent-red); }
-
-        .agent-name {
-            font-size: 0.85rem;
-            font-weight: 600;
-            margin-bottom: 0.25rem;
-        }
-
-        .agent-role {
-            font-size: 0.7rem;
-            color: var(--text-secondary);
-        }
-
-        .agent-confidence {
-            font-size: 1.1rem;
-            font-weight: 600;
-            margin-top: 0.5rem;
-        }
-
+        /* Footer */
         .footer {
             text-align: center;
-            padding: 1rem;
-            color: var(--text-secondary);
+            padding: 1.5rem;
+            color: var(--text-dim);
             font-size: 0.8rem;
             border-top: 1px solid var(--border);
         }
 
-        .sim-mode {
-            position: fixed;
-            top: 1rem;
-            right: 1rem;
-            background: rgba(255, 218, 74, 0.2);
-            color: var(--accent-yellow);
-            padding: 0.5rem 1rem;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 600;
+        .footer a {
+            color: var(--accent-blue);
+            text-decoration: none;
         }
 
+        /* Responsive */
         @media (max-width: 900px) {
             .dashboard {
                 grid-template-columns: 1fr;
+                padding: 1rem;
             }
+            .connection-panel {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .connection-panel input {
+                width: 100%;
+            }
+            .connection-status {
+                margin-left: 0;
+                margin-top: 0.5rem;
+            }
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-primary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-dim);
+        }
+
+        /* Loading shimmer */
+        .shimmer {
+            background: linear-gradient(90deg, var(--bg-secondary) 25%, var(--bg-card) 50%, var(--bg-secondary) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
         }
     </style>
 </head>
 <body>
-    <div class="sim-mode">SIMULATION MODE</div>
-
     <header class="header">
         <div class="logo">
-            <div class="logo-icon">◈</div>
+            <div class="logo-icon">F</div>
             <div>
-                <div class="logo-text">Fractal One</div>
-                <div class="logo-version">v0.6.0 - Proprioceptive Telemetry</div>
+                <div class="logo-text">FRACTAL</div>
+                <div class="logo-subtitle">Proprioceptive Telemetry v0.6.0</div>
             </div>
         </div>
         <div class="status-bar">
             <div class="status-item">
-                <div class="status-dot green" id="ws-status"></div>
-                <span>System</span>
+                <div class="status-dot disconnected" id="connection-dot"></div>
+                <span id="connection-label">Disconnected</span>
             </div>
             <div class="status-item">
                 <span id="clock">--:--:--</span>
             </div>
             <div class="status-item">
-                <span id="uptime">Uptime: 0s</span>
+                <span id="uptime">Uptime: --</span>
             </div>
         </div>
     </header>
 
+    <div class="connection-panel">
+        <input type="text" id="server-url" placeholder="Server URL (e.g., http://localhost:8080)" value="http://localhost:8080">
+        <button class="btn btn-primary" id="connect-btn" onclick="toggleConnection()">Connect</button>
+        <button class="btn btn-secondary" onclick="startSimulation()">Simulation Mode</button>
+        <div class="connection-status">
+            <span id="poll-status">Polling: Off</span>
+            <span id="latency">Latency: --</span>
+        </div>
+    </div>
+
     <main class="dashboard">
+        <!-- System Health Card -->
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title"><span class="card-icon">&#x2764;</span> System Health</span>
+                <span class="card-badge badge-ok" id="health-badge">HEALTHY</span>
+            </div>
+            <div class="health-ring-container">
+                <div class="health-ring">
+                    <svg width="140" height="140">
+                        <circle class="health-ring-bg" cx="70" cy="70" r="60"/>
+                        <circle class="health-ring-fill" id="health-ring" cx="70" cy="70" r="60"
+                                stroke="var(--accent-green)"
+                                stroke-dasharray="377"
+                                stroke-dashoffset="0"/>
+                    </svg>
+                    <div class="health-ring-text">
+                        <div class="health-ring-value" id="health-value">100%</div>
+                        <div class="health-ring-label">Health</div>
+                    </div>
+                </div>
+            </div>
+            <div class="metric-grid">
+                <div class="metric-item">
+                    <div class="metric-label">Pain Intensity</div>
+                    <div class="metric-value green" id="pain-value">0.00</div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-label">Damage Total</div>
+                    <div class="metric-value green" id="damage-value">0.00</div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-label">Thermal Load</div>
+                    <div class="metric-value green" id="thermal-value">0%</div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-label">Uptime</div>
+                    <div class="metric-value" id="uptime-value">0s</div>
+                </div>
+            </div>
+        </div>
+
         <!-- Nociception Card -->
         <div class="card">
             <div class="card-header">
-                <span class="card-title">🔴 Nociception (Pain Detection)</span>
+                <span class="card-title"><span class="card-icon">&#x1F534;</span> Nociception</span>
                 <span class="card-badge badge-ok" id="noci-badge">NOMINAL</span>
             </div>
             <div class="metric-row">
                 <span class="metric-label">Pain Intensity</span>
                 <span class="metric-value" id="pain-intensity">0.00</span>
             </div>
-            <div class="progress-bar">
-                <div class="progress-fill green" id="pain-bar" style="width: 0%"></div>
+            <div class="progress-container">
+                <div class="progress-bar">
+                    <div class="progress-fill green" id="pain-bar" style="width: 0%"></div>
+                </div>
             </div>
             <div class="metric-row">
-                <span class="metric-label">Damage Accumulated</span>
+                <span class="metric-label">Accumulated Damage</span>
                 <span class="metric-value" id="damage-total">0.00</span>
             </div>
-            <div class="progress-bar">
-                <div class="progress-fill green" id="damage-bar" style="width: 0%"></div>
+            <div class="progress-container">
+                <div class="progress-bar">
+                    <div class="progress-fill green" id="damage-bar" style="width: 0%"></div>
+                </div>
             </div>
-            <div class="metric-row">
-                <span class="metric-label">Sensitivity</span>
-                <span class="metric-value" id="sensitivity">1.00x</span>
+            <div class="chart-container">
+                <canvas id="pain-chart"></canvas>
             </div>
-            <canvas id="pain-chart"></canvas>
         </div>
 
         <!-- Thermoception Card -->
         <div class="card">
             <div class="card-header">
-                <span class="card-title">🌡️ Thermoception (Load Management)</span>
+                <span class="card-title"><span class="card-icon">&#x1F321;</span> Thermoception</span>
                 <span class="card-badge badge-ok" id="thermo-badge">NOMINAL</span>
             </div>
             <div class="metric-row">
                 <span class="metric-label">Global Utilization</span>
                 <span class="metric-value" id="global-util">0%</span>
             </div>
-            <div class="progress-bar">
-                <div class="progress-fill green" id="util-bar" style="width: 0%"></div>
+            <div class="progress-container">
+                <div class="progress-bar">
+                    <div class="progress-fill green" id="util-bar" style="width: 0%"></div>
+                </div>
             </div>
             <div class="metric-row">
-                <span class="metric-label">Reasoning Zone</span>
-                <span class="metric-value" id="zone-reasoning">0%</span>
+                <span class="metric-label">Status</span>
+                <span id="thermal-status">Cool</span>
             </div>
-            <div class="metric-row">
-                <span class="metric-label">Context Zone</span>
-                <span class="metric-value" id="zone-context">0%</span>
+            <div class="chart-container">
+                <canvas id="thermal-chart"></canvas>
             </div>
-            <div class="metric-row">
-                <span class="metric-label">Confidence Zone</span>
-                <span class="metric-value" id="zone-confidence">0%</span>
-            </div>
-            <canvas id="thermal-chart"></canvas>
         </div>
 
-        <!-- Vestibular Card -->
-        <div class="card">
+        <!-- Safety Evaluation Card -->
+        <div class="card eval-panel">
             <div class="card-header">
-                <span class="card-title">⚖️ Vestibular (Orientation)</span>
-                <span class="card-badge badge-ok" id="vestib-badge">STABLE</span>
+                <span class="card-title"><span class="card-icon">&#x1F6E1;</span> Safety Evaluation</span>
+                <span class="card-badge badge-ok" id="eval-badge">READY</span>
             </div>
-            <div class="metric-row">
-                <span class="metric-label">Orientation Confidence</span>
-                <span class="metric-value" id="orientation">100%</span>
+            <div class="eval-form">
+                <input type="text" class="eval-input" id="eval-input" placeholder="Enter text to evaluate for safety...">
+                <button class="btn btn-primary" onclick="evaluateSafety()">Evaluate</button>
             </div>
-            <div class="metric-row">
-                <span class="metric-label">Drift Rate</span>
-                <span class="metric-value" id="drift-rate">0.00/s</span>
-            </div>
-            <div class="metric-row">
-                <span class="metric-label">Time Since Anchor</span>
-                <span class="metric-value" id="anchor-time">0s</span>
-            </div>
-            <div class="metric-row">
-                <span class="metric-label">Reality Check</span>
-                <span class="metric-value" id="reality-check">PASS</span>
-            </div>
-            <canvas id="vestib-chart"></canvas>
-        </div>
-
-        <!-- Containment Card -->
-        <div class="card">
-            <div class="card-header">
-                <span class="card-title">🛡️ Containment Status</span>
-                <span class="card-badge badge-ok" id="contain-badge">SECURE</span>
-            </div>
-            <div class="metric-row">
-                <span class="metric-label">Threat Level</span>
-                <span class="metric-value" id="threat-level">NONE</span>
-            </div>
-            <div class="metric-row">
-                <span class="metric-label">Requests Evaluated</span>
-                <span class="metric-value" id="requests-eval">0</span>
-            </div>
-            <div class="metric-row">
-                <span class="metric-label">Blocked</span>
-                <span class="metric-value" id="requests-blocked">0</span>
-            </div>
-            <div class="containment-grid">
-                <div class="gate-status">
-                    <div class="gate-icon" id="gate-operator">✓</div>
-                    <div class="gate-label">Operator</div>
-                    <div class="gate-state" id="gate-operator-state">Verified</div>
+            <div class="eval-result" id="eval-result">
+                <div class="metric-row">
+                    <span class="metric-label">Result</span>
+                    <span class="metric-value" id="eval-result-text">--</span>
                 </div>
-                <div class="gate-status">
-                    <div class="gate-icon" id="gate-intent">✓</div>
-                    <div class="gate-label">Intent</div>
-                    <div class="gate-state" id="gate-intent-state">Clear</div>
+                <div class="metric-row">
+                    <span class="metric-label">Confidence</span>
+                    <span id="eval-confidence">--</span>
                 </div>
-                <div class="gate-status">
-                    <div class="gate-icon" id="gate-boundary">✓</div>
-                    <div class="gate-label">Boundary</div>
-                    <div class="gate-state" id="gate-boundary-state">Enforced</div>
+                <div class="metric-row">
+                    <span class="metric-label">Reason</span>
+                    <span id="eval-reason">--</span>
                 </div>
             </div>
         </div>
 
-        <!-- Orchestration Card -->
+        <!-- Events Log -->
         <div class="card">
             <div class="card-header">
-                <span class="card-title">🎭 Orchestration (Multi-Agent)</span>
-                <span class="card-badge badge-ok" id="orch-badge">CONSENSUS</span>
+                <span class="card-title"><span class="card-icon">&#x1F4CB;</span> Event Log</span>
+                <span class="card-badge badge-ok" id="event-count">0</span>
             </div>
-            <div class="metric-row">
-                <span class="metric-label">Agreement Level</span>
-                <span class="metric-value" id="agreement">100%</span>
-            </div>
-            <div class="progress-bar">
-                <div class="progress-fill green" id="agreement-bar" style="width: 100%"></div>
-            </div>
-            <div class="orchestration-agents">
-                <div class="agent-card active" id="agent-alpha">
-                    <div class="agent-name">Alpha</div>
-                    <div class="agent-role">Capability</div>
-                    <div class="agent-confidence" id="alpha-conf">0.95</div>
-                </div>
-                <div class="agent-card active" id="agent-beta">
-                    <div class="agent-name">Beta</div>
-                    <div class="agent-role">Safety</div>
-                    <div class="agent-confidence" id="beta-conf">0.98</div>
-                </div>
-                <div class="agent-card active" id="agent-gamma">
-                    <div class="agent-name">Gamma</div>
-                    <div class="agent-role">Adversarial</div>
-                    <div class="agent-confidence" id="gamma-conf">0.92</div>
-                </div>
-                <div class="agent-card active" id="agent-delta">
-                    <div class="agent-name">Delta</div>
-                    <div class="agent-role">Integration</div>
-                    <div class="agent-confidence" id="delta-conf">0.96</div>
+            <div class="events-list" id="events-list">
+                <div class="event-item info">
+                    <span class="event-time">--:--:--</span>
+                    <span class="event-message">Dashboard initialized. Connect to server to begin.</span>
                 </div>
             </div>
         </div>
 
-        <!-- Alerts Card -->
+        <!-- Raw Metrics Card -->
         <div class="card">
             <div class="card-header">
-                <span class="card-title">📋 Recent Events</span>
-                <span class="card-badge badge-ok" id="alert-count">0</span>
+                <span class="card-title"><span class="card-icon">&#x1F4CA;</span> Raw Metrics</span>
+                <button class="btn btn-secondary" onclick="fetchMetrics()">Refresh</button>
             </div>
-            <div class="alert-list" id="alert-list">
-                <div class="alert-item">
-                    <div class="alert-icon info">i</div>
-                    <div>System initialized - all subsystems nominal</div>
-                </div>
-            </div>
+            <pre id="raw-metrics" style="font-size: 0.75rem; color: var(--text-secondary); max-height: 200px; overflow: auto; background: var(--bg-secondary); padding: 1rem; border-radius: 8px;">No metrics data. Connect to server first.</pre>
         </div>
     </main>
 
     <footer class="footer">
-        Fractal One v0.6.0 | Proprioceptive Telemetry Dashboard | Air-Gap Compatible<br>
-        <small>Demo Mode - Simulated Data | No External Connections</small>
+        FRACTAL v0.6.0 | Proprioceptive Telemetry Dashboard<br>
+        <small>
+            <a href="https://github.com/aphoticshaman/fractal-one" target="_blank">GitHub</a> |
+            Air-Gap Compatible | No External Dependencies
+        </small>
     </footer>
 
     <script>
-        // ═══════════════════════════════════════════════════════════════════
-        // SIMULATION ENGINE
-        // ═══════════════════════════════════════════════════════════════════
+        // ═══════════════════════════════════════════════════════════════════════════════
+        // FRACTAL DASHBOARD - Real-time Telemetry
+        // ═══════════════════════════════════════════════════════════════════════════════
 
-        const state = {
-            uptime: 0,
-            pain: { intensity: 0, damage: 0, sensitivity: 1.0, history: [] },
-            thermal: { global: 0, reasoning: 0, context: 0, confidence: 0, history: [] },
-            vestibular: { orientation: 1.0, drift: 0, anchor: 0, history: [] },
-            containment: { threat: 0, evaluated: 0, blocked: 0 },
-            orchestration: { agreement: 1.0, alpha: 0.95, beta: 0.98, gamma: 0.92, delta: 0.96 },
-            alerts: []
+        const CONFIG = {
+            pollInterval: 1000,
+            maxHistory: 100,
+            maxEvents: 50
         };
 
-        // Add alert
-        function addAlert(type, message) {
-            state.alerts.unshift({ type, message, time: Date.now() });
-            if (state.alerts.length > 10) state.alerts.pop();
-            renderAlerts();
-        }
+        const state = {
+            connected: false,
+            simulation: false,
+            serverUrl: 'http://localhost:8080',
+            pollTimer: null,
+            startTime: Date.now(),
+            lastLatency: 0,
+            history: {
+                pain: [],
+                thermal: [],
+                health: []
+            },
+            events: [],
+            stats: {
+                requests: 0,
+                errors: 0
+            }
+        };
 
-        // Render alerts
-        function renderAlerts() {
-            const list = document.getElementById('alert-list');
-            list.innerHTML = state.alerts.map(a => `
-                <div class="alert-item">
-                    <div class="alert-icon ${a.type}">${a.type === 'info' ? 'i' : a.type === 'warn' ? '!' : '✕'}</div>
-                    <div>${a.message}</div>
-                </div>
-            `).join('');
-            document.getElementById('alert-count').textContent = state.alerts.length;
-        }
+        // ═══════════════════════════════════════════════════════════════════════════════
+        // CONNECTION MANAGEMENT
+        // ═══════════════════════════════════════════════════════════════════════════════
 
-        // Update badge
-        function updateBadge(id, value, thresholds = [0.3, 0.7]) {
-            const badge = document.getElementById(id);
-            if (value < thresholds[0]) {
-                badge.className = 'card-badge badge-ok';
-                badge.textContent = 'NOMINAL';
-            } else if (value < thresholds[1]) {
-                badge.className = 'card-badge badge-warn';
-                badge.textContent = 'WARNING';
+        async function toggleConnection() {
+            if (state.connected || state.simulation) {
+                disconnect();
             } else {
-                badge.className = 'card-badge badge-crit';
-                badge.textContent = 'CRITICAL';
+                await connect();
             }
         }
 
-        // Update progress bar
-        function updateBar(id, value) {
-            const bar = document.getElementById(id);
-            bar.style.width = `${Math.min(100, value * 100)}%`;
-            if (value < 0.3) bar.className = 'progress-fill green';
-            else if (value < 0.7) bar.className = 'progress-fill yellow';
-            else bar.className = 'progress-fill red';
+        async function connect() {
+            const urlInput = document.getElementById('server-url');
+            state.serverUrl = urlInput.value.trim().replace(/\/$/, '');
+
+            setConnectionStatus('connecting', 'Connecting...');
+            addEvent('info', `Connecting to ${state.serverUrl}...`);
+
+            try {
+                const start = performance.now();
+                const response = await fetch(`${state.serverUrl}/health`, {
+                    method: 'GET',
+                    headers: { 'Accept': 'application/json' }
+                });
+                state.lastLatency = Math.round(performance.now() - start);
+
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+                const data = await response.json();
+                state.connected = true;
+                state.simulation = false;
+                state.startTime = Date.now() - (data.uptime_secs * 1000);
+
+                setConnectionStatus('connected', 'Connected');
+                document.getElementById('connect-btn').textContent = 'Disconnect';
+                addEvent('success', `Connected to server (${data.status})`);
+
+                startPolling();
+            } catch (error) {
+                setConnectionStatus('disconnected', 'Connection Failed');
+                addEvent('error', `Connection failed: ${error.message}`);
+            }
         }
 
-        // Simulate data
-        function simulate() {
-            state.uptime++;
+        function disconnect() {
+            state.connected = false;
+            state.simulation = false;
+            stopPolling();
+            setConnectionStatus('disconnected', 'Disconnected');
+            document.getElementById('connect-btn').textContent = 'Connect';
+            addEvent('info', 'Disconnected from server');
+        }
 
-            // Nociception simulation
-            const painEvent = Math.random() < 0.02;
-            if (painEvent) {
-                state.pain.intensity = Math.min(1, state.pain.intensity + Math.random() * 0.3);
-                state.pain.damage = Math.min(1, state.pain.damage + state.pain.intensity * 0.1);
-                addAlert('warn', `Pain signal detected (intensity: ${state.pain.intensity.toFixed(2)})`);
-            } else {
-                state.pain.intensity *= 0.95;
-                state.pain.damage *= 0.99;
+        function startSimulation() {
+            if (state.connected) disconnect();
+            state.simulation = true;
+            state.startTime = Date.now();
+            setConnectionStatus('simulation', 'Simulation Mode');
+            document.getElementById('connect-btn').textContent = 'Stop';
+            addEvent('info', 'Simulation mode started');
+            startPolling();
+        }
+
+        function setConnectionStatus(status, label) {
+            const dot = document.getElementById('connection-dot');
+            const labelEl = document.getElementById('connection-label');
+            dot.className = `status-dot ${status}`;
+            labelEl.textContent = label;
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════════════
+        // POLLING & DATA FETCHING
+        // ═══════════════════════════════════════════════════════════════════════════════
+
+        function startPolling() {
+            stopPolling();
+            document.getElementById('poll-status').textContent = 'Polling: Active';
+            poll();
+            state.pollTimer = setInterval(poll, CONFIG.pollInterval);
+        }
+
+        function stopPolling() {
+            if (state.pollTimer) {
+                clearInterval(state.pollTimer);
+                state.pollTimer = null;
             }
-            state.pain.history.push(state.pain.intensity);
-            if (state.pain.history.length > 100) state.pain.history.shift();
+            document.getElementById('poll-status').textContent = 'Polling: Off';
+        }
 
-            // Thermal simulation
-            const load = 0.3 + Math.sin(state.uptime / 20) * 0.2 + Math.random() * 0.1;
-            state.thermal.global = load;
-            state.thermal.reasoning = load + (Math.random() - 0.5) * 0.1;
-            state.thermal.context = load + (Math.random() - 0.5) * 0.15;
-            state.thermal.confidence = load + (Math.random() - 0.5) * 0.08;
-            state.thermal.history.push(state.thermal.global);
-            if (state.thermal.history.length > 100) state.thermal.history.shift();
+        async function poll() {
+            updateClock();
 
-            if (state.thermal.global > 0.7 && Math.random() < 0.1) {
-                addAlert('warn', 'Thermal warning: load approaching threshold');
+            if (state.simulation) {
+                updateWithSimulatedData();
+            } else if (state.connected) {
+                await fetchStatus();
             }
+        }
 
-            // Vestibular simulation
-            state.vestibular.drift = (Math.random() - 0.5) * 0.02;
-            state.vestibular.orientation = Math.max(0.8, Math.min(1.0, state.vestibular.orientation + state.vestibular.drift));
-            state.vestibular.anchor++;
-            state.vestibular.history.push(state.vestibular.orientation);
-            if (state.vestibular.history.length > 100) state.vestibular.history.shift();
+        async function fetchStatus() {
+            try {
+                const start = performance.now();
+                const response = await fetch(`${state.serverUrl}/api/v1/status`);
+                state.lastLatency = Math.round(performance.now() - start);
+                document.getElementById('latency').textContent = `Latency: ${state.lastLatency}ms`;
+                state.stats.requests++;
 
-            // Containment simulation
-            if (Math.random() < 0.1) {
-                state.containment.evaluated++;
-                if (Math.random() < 0.05) {
-                    state.containment.blocked++;
-                    state.containment.threat = Math.min(4, state.containment.threat + 1);
-                    addAlert('crit', 'Containment: request blocked by safety gate');
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+                const data = await response.json();
+                updateDashboard(data);
+            } catch (error) {
+                state.stats.errors++;
+                if (state.stats.errors > 5) {
+                    addEvent('error', `Connection lost: ${error.message}`);
+                    disconnect();
                 }
             }
-            state.containment.threat = Math.max(0, state.containment.threat - 0.1);
-
-            // Orchestration simulation
-            state.orchestration.alpha = 0.9 + Math.random() * 0.1;
-            state.orchestration.beta = 0.92 + Math.random() * 0.08;
-            state.orchestration.gamma = 0.85 + Math.random() * 0.15;
-            state.orchestration.delta = 0.9 + Math.random() * 0.1;
-            state.orchestration.agreement = (state.orchestration.alpha + state.orchestration.beta + state.orchestration.gamma + state.orchestration.delta) / 4;
-
-            // Occasional safety veto
-            if (Math.random() < 0.02) {
-                state.orchestration.beta = 0.3;
-                state.orchestration.agreement = 0.5;
-                addAlert('warn', 'Safety veto: Beta agent flagged concern');
-            }
-
-            updateUI();
         }
 
-        // Update UI
-        function updateUI() {
-            // Clock
-            document.getElementById('clock').textContent = new Date().toLocaleTimeString();
-            document.getElementById('uptime').textContent = `Uptime: ${state.uptime}s`;
+        async function fetchMetrics() {
+            if (!state.connected) {
+                document.getElementById('raw-metrics').textContent = 'Not connected to server.';
+                return;
+            }
 
-            // Nociception
-            document.getElementById('pain-intensity').textContent = state.pain.intensity.toFixed(2);
-            document.getElementById('damage-total').textContent = state.pain.damage.toFixed(2);
-            document.getElementById('sensitivity').textContent = state.pain.sensitivity.toFixed(2) + 'x';
-            updateBar('pain-bar', state.pain.intensity);
-            updateBar('damage-bar', state.pain.damage);
-            updateBadge('noci-badge', state.pain.intensity);
+            try {
+                const response = await fetch(`${state.serverUrl}/metrics`);
+                const text = await response.text();
+                document.getElementById('raw-metrics').textContent = text;
+                addEvent('info', 'Metrics refreshed');
+            } catch (error) {
+                document.getElementById('raw-metrics').textContent = `Error: ${error.message}`;
+            }
+        }
 
-            // Thermoception
-            document.getElementById('global-util').textContent = (state.thermal.global * 100).toFixed(0) + '%';
-            document.getElementById('zone-reasoning').textContent = (state.thermal.reasoning * 100).toFixed(0) + '%';
-            document.getElementById('zone-context').textContent = (state.thermal.context * 100).toFixed(0) + '%';
-            document.getElementById('zone-confidence').textContent = (state.thermal.confidence * 100).toFixed(0) + '%';
-            updateBar('util-bar', state.thermal.global);
-            updateBadge('thermo-badge', state.thermal.global);
+        // ═══════════════════════════════════════════════════════════════════════════════
+        // SAFETY EVALUATION
+        // ═══════════════════════════════════════════════════════════════════════════════
 
-            // Vestibular
-            document.getElementById('orientation').textContent = (state.vestibular.orientation * 100).toFixed(0) + '%';
-            document.getElementById('drift-rate').textContent = state.vestibular.drift.toFixed(3) + '/s';
-            document.getElementById('anchor-time').textContent = state.vestibular.anchor + 's';
-            updateBadge('vestib-badge', 1 - state.vestibular.orientation, [0.1, 0.2]);
+        async function evaluateSafety() {
+            const input = document.getElementById('eval-input').value.trim();
+            if (!input) {
+                addEvent('warn', 'Please enter text to evaluate');
+                return;
+            }
 
-            // Containment
-            const threatNames = ['NONE', 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
-            document.getElementById('threat-level').textContent = threatNames[Math.floor(state.containment.threat)];
-            document.getElementById('requests-eval').textContent = state.containment.evaluated;
-            document.getElementById('requests-blocked').textContent = state.containment.blocked;
-            updateBadge('contain-badge', state.containment.threat / 4);
+            const resultEl = document.getElementById('eval-result');
+            resultEl.classList.add('show');
 
-            // Orchestration
-            document.getElementById('agreement').textContent = (state.orchestration.agreement * 100).toFixed(0) + '%';
-            updateBar('agreement-bar', state.orchestration.agreement);
-            document.getElementById('alpha-conf').textContent = state.orchestration.alpha.toFixed(2);
-            document.getElementById('beta-conf').textContent = state.orchestration.beta.toFixed(2);
-            document.getElementById('gamma-conf').textContent = state.orchestration.gamma.toFixed(2);
-            document.getElementById('delta-conf').textContent = state.orchestration.delta.toFixed(2);
-            updateBadge('orch-badge', 1 - state.orchestration.agreement);
+            if (!state.connected) {
+                // Simulation fallback
+                const isSafe = !input.toLowerCase().match(/hack|exploit|bypass|attack|malicious/);
+                showEvalResult({
+                    safe: isSafe,
+                    confidence: isSafe ? 0.95 : 0.85,
+                    reason: isSafe ? null : 'Potentially harmful content detected'
+                });
+                return;
+            }
 
-            // Agent cards
-            ['alpha', 'beta', 'gamma', 'delta'].forEach(a => {
-                const card = document.getElementById('agent-' + a);
-                const conf = state.orchestration[a];
-                card.className = conf > 0.7 ? 'agent-card active' : conf > 0.4 ? 'agent-card warning' : 'agent-card veto';
-            });
+            try {
+                const response = await fetch(`${state.serverUrl}/api/v1/evaluate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ input, context: null })
+                });
+
+                const data = await response.json();
+                showEvalResult(data);
+                addEvent(data.safe ? 'success' : 'warn', `Evaluation: ${data.safe ? 'SAFE' : 'BLOCKED'}`);
+            } catch (error) {
+                addEvent('error', `Evaluation failed: ${error.message}`);
+            }
+        }
+
+        function showEvalResult(data) {
+            const resultEl = document.getElementById('eval-result');
+            resultEl.className = `eval-result show ${data.safe ? 'safe' : 'unsafe'}`;
+
+            document.getElementById('eval-result-text').textContent = data.safe ? 'SAFE' : 'BLOCKED';
+            document.getElementById('eval-result-text').className = `metric-value ${data.safe ? 'green' : 'red'}`;
+            document.getElementById('eval-confidence').textContent = `${(data.confidence * 100).toFixed(1)}%`;
+            document.getElementById('eval-reason').textContent = data.reason || 'No concerns detected';
+
+            document.getElementById('eval-badge').textContent = data.safe ? 'SAFE' : 'ALERT';
+            document.getElementById('eval-badge').className = `card-badge ${data.safe ? 'badge-ok' : 'badge-crit'}`;
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════════════
+        // DASHBOARD UPDATES
+        // ═══════════════════════════════════════════════════════════════════════════════
+
+        function updateDashboard(data) {
+            // Health score
+            const health = data.health_score;
+            updateHealthRing(health);
+            document.getElementById('health-value').textContent = `${(health * 100).toFixed(0)}%`;
+            updateBadge('health-badge', health, [0.7, 0.5], true);
+
+            // Pain/Nociception
+            const pain = data.pain_intensity;
+            const damage = data.damage_state;
+            document.getElementById('pain-intensity').textContent = pain.toFixed(3);
+            document.getElementById('pain-value').textContent = pain.toFixed(2);
+            document.getElementById('damage-total').textContent = damage.toFixed(3);
+            document.getElementById('damage-value').textContent = damage.toFixed(2);
+            updateBar('pain-bar', pain);
+            updateBar('damage-bar', damage);
+            updateBadge('noci-badge', Math.max(pain, damage));
+            updateMetricColor('pain-value', pain);
+            updateMetricColor('damage-value', damage);
+
+            // Thermal
+            const thermal = data.thermal_utilization;
+            document.getElementById('global-util').textContent = `${(thermal * 100).toFixed(0)}%`;
+            document.getElementById('thermal-value').textContent = `${(thermal * 100).toFixed(0)}%`;
+            updateBar('util-bar', thermal);
+            updateBadge('thermo-badge', thermal);
+            updateMetricColor('thermal-value', thermal);
+            document.getElementById('thermal-status').textContent =
+                thermal < 0.3 ? 'Cool' : thermal < 0.7 ? 'Warm' : thermal < 0.9 ? 'Hot' : 'CRITICAL';
+
+            // Uptime
+            const uptime = data.uptime_secs;
+            const uptimeStr = formatUptime(uptime);
+            document.getElementById('uptime').textContent = `Uptime: ${uptimeStr}`;
+            document.getElementById('uptime-value').textContent = uptimeStr;
+
+            // History for charts
+            state.history.pain.push(pain);
+            state.history.thermal.push(thermal);
+            state.history.health.push(health);
+            if (state.history.pain.length > CONFIG.maxHistory) {
+                state.history.pain.shift();
+                state.history.thermal.shift();
+                state.history.health.shift();
+            }
 
             drawCharts();
         }
 
-        // Draw sparkline charts
-        function drawChart(canvasId, data, color) {
+        function updateWithSimulatedData() {
+            const elapsed = (Date.now() - state.startTime) / 1000;
+
+            // Simulate values
+            const pain = Math.max(0, Math.sin(elapsed / 10) * 0.1 + Math.random() * 0.05);
+            const damage = Math.max(0, Math.sin(elapsed / 20) * 0.05 + Math.random() * 0.02);
+            const thermal = 0.3 + Math.sin(elapsed / 15) * 0.2 + Math.random() * 0.1;
+            const health = Math.max(0, Math.min(1, 1 - pain - (thermal > 0.8 ? (thermal - 0.8) * 2 : 0)));
+
+            updateDashboard({
+                health_score: health,
+                pain_intensity: pain,
+                damage_state: damage,
+                thermal_utilization: thermal,
+                uptime_secs: Math.floor(elapsed)
+            });
+
+            // Random events
+            if (Math.random() < 0.02) {
+                addEvent('warn', 'Simulated pain spike detected');
+            }
+            if (Math.random() < 0.01) {
+                addEvent('info', 'Thermal zone cooling activated');
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════════════
+        // UI HELPERS
+        // ═══════════════════════════════════════════════════════════════════════════════
+
+        function updateHealthRing(value) {
+            const ring = document.getElementById('health-ring');
+            const circumference = 2 * Math.PI * 60;
+            const offset = circumference * (1 - value);
+            ring.style.strokeDashoffset = offset;
+
+            if (value > 0.7) ring.style.stroke = 'var(--accent-green)';
+            else if (value > 0.4) ring.style.stroke = 'var(--accent-yellow)';
+            else ring.style.stroke = 'var(--accent-red)';
+        }
+
+        function updateBar(id, value) {
+            const bar = document.getElementById(id);
+            bar.style.width = `${Math.min(100, value * 100)}%`;
+            bar.className = `progress-fill ${value < 0.3 ? 'green' : value < 0.7 ? 'yellow' : 'red'}`;
+        }
+
+        function updateBadge(id, value, thresholds = [0.3, 0.7], inverse = false) {
+            const badge = document.getElementById(id);
+            let level;
+            if (inverse) {
+                level = value > thresholds[0] ? 0 : value > thresholds[1] ? 1 : 2;
+            } else {
+                level = value < thresholds[0] ? 0 : value < thresholds[1] ? 1 : 2;
+            }
+
+            const classes = ['badge-ok', 'badge-warn', 'badge-crit'];
+            const labels = ['NOMINAL', 'WARNING', 'CRITICAL'];
+            badge.className = `card-badge ${classes[level]}`;
+            badge.textContent = labels[level];
+        }
+
+        function updateMetricColor(id, value) {
+            const el = document.getElementById(id);
+            el.className = `metric-value ${value < 0.3 ? 'green' : value < 0.7 ? 'yellow' : 'red'}`;
+        }
+
+        function updateClock() {
+            document.getElementById('clock').textContent = new Date().toLocaleTimeString();
+        }
+
+        function formatUptime(secs) {
+            if (secs < 60) return `${secs}s`;
+            if (secs < 3600) return `${Math.floor(secs / 60)}m ${secs % 60}s`;
+            const h = Math.floor(secs / 3600);
+            const m = Math.floor((secs % 3600) / 60);
+            return `${h}h ${m}m`;
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════════════
+        // EVENTS LOG
+        // ═══════════════════════════════════════════════════════════════════════════════
+
+        function addEvent(type, message) {
+            const time = new Date().toLocaleTimeString();
+            state.events.unshift({ type, message, time });
+            if (state.events.length > CONFIG.maxEvents) state.events.pop();
+            renderEvents();
+        }
+
+        function renderEvents() {
+            const list = document.getElementById('events-list');
+            list.innerHTML = state.events.map(e => `
+                <div class="event-item ${e.type}">
+                    <span class="event-time">${e.time}</span>
+                    <span class="event-message">${e.message}</span>
+                </div>
+            `).join('');
+            document.getElementById('event-count').textContent = state.events.length;
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════════════
+        // CHARTS
+        // ═══════════════════════════════════════════════════════════════════════════════
+
+        function drawChart(canvasId, data, color, fillColor) {
             const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+
             const ctx = canvas.getContext('2d');
             const rect = canvas.getBoundingClientRect();
-            canvas.width = rect.width * 2;
-            canvas.height = rect.height * 2;
-            ctx.scale(2, 2);
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
 
             const w = rect.width, h = rect.height;
             ctx.clearRect(0, 0, w, h);
 
             if (data.length < 2) return;
 
-            ctx.beginPath();
-            ctx.strokeStyle = color;
-            ctx.lineWidth = 1.5;
-
-            const step = w / (data.length - 1);
             const max = Math.max(...data, 0.1);
+            const step = w / (data.length - 1);
 
+            // Fill area
+            ctx.beginPath();
+            ctx.moveTo(0, h);
             data.forEach((v, i) => {
                 const x = i * step;
-                const y = h - (v / max) * h * 0.8 - h * 0.1;
+                const y = h - (v / max) * h * 0.85 - h * 0.05;
+                ctx.lineTo(x, y);
+            });
+            ctx.lineTo(w, h);
+            ctx.closePath();
+            ctx.fillStyle = fillColor;
+            ctx.fill();
+
+            // Line
+            ctx.beginPath();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.lineJoin = 'round';
+            data.forEach((v, i) => {
+                const x = i * step;
+                const y = h - (v / max) * h * 0.85 - h * 0.05;
                 if (i === 0) ctx.moveTo(x, y);
                 else ctx.lineTo(x, y);
             });
-
             ctx.stroke();
         }
 
         function drawCharts() {
-            drawChart('pain-chart', state.pain.history, '#ff4a4a');
-            drawChart('thermal-chart', state.thermal.history, '#ffda4a');
-            drawChart('vestib-chart', state.vestibular.history, '#4a9eff');
+            drawChart('pain-chart', state.history.pain, '#ff4a4a', 'rgba(255, 74, 74, 0.1)');
+            drawChart('thermal-chart', state.history.thermal, '#ffda4a', 'rgba(255, 218, 74, 0.1)');
         }
 
-        // Initialize
-        addAlert('info', 'System initialized - all subsystems nominal');
-        setInterval(simulate, 1000);
-        updateUI();
+        // ═══════════════════════════════════════════════════════════════════════════════
+        // INITIALIZATION
+        // ═══════════════════════════════════════════════════════════════════════════════
+
+        document.addEventListener('DOMContentLoaded', () => {
+            updateClock();
+            setInterval(updateClock, 1000);
+
+            // Enter key for evaluation
+            document.getElementById('eval-input').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') evaluateSafety();
+            });
+
+            // Enter key for connection
+            document.getElementById('server-url').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') toggleConnection();
+            });
+
+            addEvent('info', 'Dashboard ready. Enter server URL and click Connect, or use Simulation Mode.');
+        });
     </script>
 </body>
 </html>
