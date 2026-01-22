@@ -67,6 +67,13 @@ enum Commands {
     /// Run everything as unified daemon
     Daemon,
 
+    /// Start HTTP server with API and metrics
+    Serve {
+        /// HTTP bind address
+        #[arg(short, long, default_value = "0.0.0.0:8080")]
+        bind: String,
+    },
+
     /// Test a specific component
     Test {
         /// Component to test: heart, cortex, qualia, gpu
@@ -520,6 +527,15 @@ async fn main() -> Result<()> {
         #[cfg(feature = "gpu")]
         Commands::Lens => fractal::fractal_lens::run(),
         Commands::Daemon => run_daemon().await,
+        Commands::Serve { bind } => {
+            let addr: std::net::SocketAddr = bind.parse()
+                .expect("Invalid bind address");
+            let config = fractal::server::ServerConfig {
+                bind_addr: addr,
+                metrics_addr: None,
+            };
+            fractal::server::run_server(config).await
+        }
         Commands::Test { component } => run_test(&component).await,
         Commands::Kill => {
             fractal::neuro_link::Synapse::connect(false).send_kill_signal();

@@ -1,0 +1,119 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# CARGO DENY — Supply Chain Security Policy
+# ═══════════════════════════════════════════════════════════════════════════════
+# Run with: cargo deny check
+# ═══════════════════════════════════════════════════════════════════════════════
+
+[graph]
+targets = [
+    "x86_64-unknown-linux-gnu",
+    "x86_64-unknown-linux-musl",
+    "x86_64-pc-windows-msvc",
+    "aarch64-unknown-linux-gnu",
+    "aarch64-apple-darwin",
+]
+all-features = true
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ADVISORIES — Security vulnerability policy
+# ═══════════════════════════════════════════════════════════════════════════════
+
+[advisories]
+db-path = "~/.cargo/advisory-db"
+db-urls = ["https://github.com/rustsec/advisory-db"]
+vulnerability = "deny"
+unmaintained = "warn"
+yanked = "warn"
+notice = "warn"
+
+# Known unmaintained crates we accept (transitive dependencies)
+ignore = [
+    # instant - transitive via winit, no security impact
+    "RUSTSEC-2024-0384",
+    # number_prefix - transitive via indicatif, cosmetic only
+    "RUSTSEC-2025-0119",
+    # paste - transitive via rav1e, macro-only
+    "RUSTSEC-2024-0436",
+    # rustls-pemfile - will update when reqwest does
+    "RUSTSEC-2025-0134",
+]
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# LICENSES — Acceptable license policy for defense procurement
+# ═══════════════════════════════════════════════════════════════════════════════
+
+[licenses]
+unlicensed = "deny"
+copyleft = "warn"
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Zlib",
+    "0BSD",
+    "Unicode-DFS-2016",
+    "CC0-1.0",
+    "BSL-1.0",
+    "MPL-2.0",
+]
+
+# Licenses that require legal review before use
+deny = [
+    "GPL-2.0",
+    "GPL-3.0",
+    "AGPL-3.0",
+    "LGPL-2.0",
+    "LGPL-2.1",
+    "LGPL-3.0",
+]
+
+confidence-threshold = 0.8
+
+[[licenses.clarify]]
+name = "ring"
+expression = "MIT AND ISC AND OpenSSL"
+license-files = [{ path = "LICENSE", hash = 0xbd0eed23 }]
+
+[[licenses.clarify]]
+name = "webpki"
+expression = "ISC"
+license-files = [{ path = "LICENSE", hash = 0x001c7e6c }]
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# BANS — Crate allowlist/denylist
+# ═══════════════════════════════════════════════════════════════════════════════
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+highlight = "all"
+workspace-default-features = "allow"
+external-default-features = "allow"
+
+# Crates we explicitly ban
+deny = [
+    # Known problematic crates
+    { name = "openssl", wrappers = [] },  # Prefer ring for FIPS path
+]
+
+# Allow specific versions when duplicates exist
+skip = []
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# SOURCES — Trusted source registries
+# ═══════════════════════════════════════════════════════════════════════════════
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "warn"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+
+# Allowed git sources (for custom crates)
+allow-git = [
+    "https://github.com/aphoticshaman/nucleation-wasm.git",
+]
+
+[sources.allow-org]
+github = ["aphoticshaman"]

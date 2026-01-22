@@ -500,6 +500,7 @@ pub struct TrustRegistry {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)] // Fields used for audit/persistence, not yet fully integrated
 struct TrustRecord {
     operator_id: String,
     trust_level: OperatorTrust,

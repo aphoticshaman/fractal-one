@@ -15,7 +15,7 @@
 //!
 //! ═══════════════════════════════════════════════════════════════════════════════
 
-use crate::observations::{ObsKey, ObsValue, Observation, ObservationBatch};
+use crate::observations::ObservationBatch;
 use crate::containment::{ContainmentResult, ThreatLevel};
 use crate::nociception::{PainSignal, PainType, DamageState};
 use crate::auth_hardened::AuthStatistics;
@@ -419,14 +419,8 @@ impl CefExporter {
     pub fn from_observations(&self, batch: &ObservationBatch) -> Vec<CefEvent> {
         let mut events = Vec::new();
 
-        for obs in batch.observations() {
-            // Only export observations with significant values
-            let value = match &obs.value {
-                ObsValue::Float(f) => *f,
-                ObsValue::Int(i) => *i as f64,
-                ObsValue::Bool(b) => if *b { 1.0 } else { 0.0 },
-                _ => continue,
-            };
+        for obs in batch.observations.iter() {
+            let value = obs.value.value;
 
             // Filter out low-value observations
             if value.abs() < 0.3 {

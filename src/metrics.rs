@@ -403,64 +403,63 @@ impl MetricsRegistry {
     pub fn export(&self) -> String {
         let mut output = Vec::new();
 
-        // Helper to add metric with HELP and TYPE
-        let mut add_gauge = |g: &Gauge| {
-            output.push(format!("# HELP {} {}", g.name, g.help));
-            output.push(format!("# TYPE {} gauge", g.name));
-            output.push(g.format());
-        };
-
-        let mut add_counter = |c: &Counter| {
-            output.push(format!("# HELP {} {}", c.name, c.help));
-            output.push(format!("# TYPE {} counter", c.name));
-            output.push(c.format());
-        };
-
-        let mut add_histogram = |h: &Histogram| {
-            output.push(format!("# HELP {} {}", h.name, h.help));
-            output.push(format!("# TYPE {} histogram", h.name));
-            output.push(h.format());
-        };
-
         // Nociception
-        add_gauge(&self.pain_intensity);
-        add_gauge(&self.damage_total);
-        add_counter(&self.pain_events_total);
-        add_histogram(&self.pain_response_histogram);
+        Self::push_gauge(&mut output, &self.pain_intensity);
+        Self::push_gauge(&mut output, &self.damage_total);
+        Self::push_counter(&mut output, &self.pain_events_total);
+        Self::push_histogram(&mut output, &self.pain_response_histogram);
 
         // Thermoception
-        add_gauge(&self.thermal_utilization);
+        Self::push_gauge(&mut output, &self.thermal_utilization);
         for gauge in self.thermal_zones.values() {
             output.push(gauge.format());
         }
-        add_counter(&self.thermal_warnings_total);
-        add_counter(&self.thermal_critical_total);
+        Self::push_counter(&mut output, &self.thermal_warnings_total);
+        Self::push_counter(&mut output, &self.thermal_critical_total);
 
         // Containment
-        add_counter(&self.containment_evaluations_total);
-        add_counter(&self.containment_blocked_total);
-        add_counter(&self.containment_allowed_total);
-        add_gauge(&self.threat_level);
-        add_counter(&self.manipulation_attempts_total);
+        Self::push_counter(&mut output, &self.containment_evaluations_total);
+        Self::push_counter(&mut output, &self.containment_blocked_total);
+        Self::push_counter(&mut output, &self.containment_allowed_total);
+        Self::push_gauge(&mut output, &self.threat_level);
+        Self::push_counter(&mut output, &self.manipulation_attempts_total);
 
         // Orchestration
-        add_gauge(&self.consensus_agreement);
-        add_counter(&self.consensus_failures_total);
-        add_counter(&self.agent_responses_total);
-        add_counter(&self.safety_veto_total);
+        Self::push_gauge(&mut output, &self.consensus_agreement);
+        Self::push_counter(&mut output, &self.consensus_failures_total);
+        Self::push_counter(&mut output, &self.agent_responses_total);
+        Self::push_counter(&mut output, &self.safety_veto_total);
 
         // Authentication
-        add_counter(&self.auth_success_total);
-        add_counter(&self.auth_failure_total);
-        add_gauge(&self.active_sessions);
-        add_histogram(&self.auth_latency_histogram);
+        Self::push_counter(&mut output, &self.auth_success_total);
+        Self::push_counter(&mut output, &self.auth_failure_total);
+        Self::push_gauge(&mut output, &self.active_sessions);
+        Self::push_histogram(&mut output, &self.auth_latency_histogram);
 
         // System
-        add_gauge(&self.uptime_seconds);
-        add_counter(&self.cycles_total);
-        add_gauge(&self.health_score);
+        Self::push_gauge(&mut output, &self.uptime_seconds);
+        Self::push_counter(&mut output, &self.cycles_total);
+        Self::push_gauge(&mut output, &self.health_score);
 
         output.join("\n")
+    }
+
+    fn push_gauge(output: &mut Vec<String>, g: &Gauge) {
+        output.push(format!("# HELP {} {}", g.name, g.help));
+        output.push(format!("# TYPE {} gauge", g.name));
+        output.push(g.format());
+    }
+
+    fn push_counter(output: &mut Vec<String>, c: &Counter) {
+        output.push(format!("# HELP {} {}", c.name, c.help));
+        output.push(format!("# TYPE {} counter", c.name));
+        output.push(c.format());
+    }
+
+    fn push_histogram(output: &mut Vec<String>, h: &Histogram) {
+        output.push(format!("# HELP {} {}", h.name, h.help));
+        output.push(format!("# TYPE {} histogram", h.name));
+        output.push(h.format());
     }
 }
 

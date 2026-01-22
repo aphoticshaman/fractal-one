@@ -10,7 +10,7 @@
 //!
 //! ═══════════════════════════════════════════════════════════════════════════════
 
-use crate::observations::{ObsKey, ObsValue, Observation, ObservationBatch};
+use crate::observations::ObservationBatch;
 use crate::containment::{ContainmentResult, ThreatLevel};
 use crate::nociception::{PainSignal, PainType, DamageState};
 use crate::time::TimePoint;
@@ -457,17 +457,10 @@ impl JsonExporter {
         let mut events = Vec::new();
         let mut obs_fields = Vec::new();
 
-        for obs in batch.observations() {
-            let value = match &obs.value {
-                ObsValue::Float(f) => *f,
-                ObsValue::Int(i) => *i as f64,
-                ObsValue::Bool(b) => if *b { 1.0 } else { 0.0 },
-                _ => continue,
-            };
-
+        for obs in batch.observations.iter() {
             obs_fields.push(ObservationField {
                 key: format!("{:?}", obs.key),
-                value,
+                value: obs.value.value,
                 source: obs.source.clone(),
             });
         }

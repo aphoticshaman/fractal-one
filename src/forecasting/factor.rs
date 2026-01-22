@@ -307,6 +307,7 @@ impl FactorComparison {
 /// Factor extractor — extracts factors from pod analysis output
 pub struct FactorExtractor {
     /// Known factor categories
+    #[allow(dead_code)] // Reserved for future category filtering
     categories: Vec<String>,
     /// Factor weight normalization mode
     normalize: bool,

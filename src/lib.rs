@@ -39,6 +39,7 @@ pub mod vestibular;
 
 pub mod audit;
 pub mod auth;
+pub mod server;
 pub mod auth_hardened;
 pub mod error;
 pub mod export;

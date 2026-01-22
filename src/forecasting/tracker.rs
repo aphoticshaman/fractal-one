@@ -265,7 +265,7 @@ impl SalienceTracker {
 
         if should_snapshot {
             self.snapshots.push(PerformanceSnapshot {
-                timestamp: now.clone(),
+                timestamp: now,
                 metrics: self.cumulative.clone(),
                 rolling_precision: self.rolling_precision.value(),
                 rolling_bet_precision: self.rolling_bet_precision.value(),

@@ -1,144 +1,147 @@
 # Procurement Readiness Tracker
 
-**Target:** Defense/Intelligence procurement review (In-Q-Tel portfolio company, prime contractor security team)
-**Timeline:** 30 days
-**Status:** In Progress
+**Target:** Defense/Intelligence procurement review
+**Status:** Early Stage - Library Components Available, Integration Required
+
+---
+
+## ⚠️ IMPORTANT: Library vs Application
+
+FRACTAL is structured as a **Rust library** with CLI examples. Enterprise features exist as **library components** that require integration into a deployment-specific application.
+
+**What this means for procurement:**
+- Core algorithms: ✅ Ready for evaluation
+- Enterprise hardening: ⚠️ Library components, need integration
+- Production deployment: ⚠️ Requires custom application wrapper
 
 ---
 
 ## Phase 1: Compliance Artifacts
 
-| Item | Status | Notes |
-|------|--------|-------|
-| SBOM (CycloneDX) | ✅ Complete | `sbom.json` generated via cargo-sbom |
-| SBOM (SPDX) | ✅ Complete | `sbom-spdx.json` available |
-| cargo audit | ✅ Complete | All CVEs documented in SECURITY.md |
-| FIPS 140-2 paths | ✅ Complete | Feature flag `fips-mode` available |
-| STIG compliance doc | ✅ Complete | See `docs/compliance/STIG-GAPS.md` |
-| Supply chain attestation | ⏳ In Progress | Pending sigstore integration |
+| Item | Actual Status | Notes |
+|------|---------------|-------|
+| SBOM script | ✅ Available | `scripts/generate-sbom.sh` - requires cargo-sbom tool |
+| cargo-deny config | ✅ Available | `deny.toml` for supply chain policy |
+| cargo audit | ✅ Passing | 0 critical CVEs, 4 unmaintained warnings (accepted) |
+| FIPS feature flag | ✅ Available | `--features fips` enables PBKDF2 instead of Argon2 |
+| STIG compliance doc | ✅ Available | `docs/STIG_COMPLIANCE.md` |
 
-### Commands
+### To Generate SBOM
 ```bash
-# Generate SBOM
-cargo install cargo-sbom
-cargo sbom --output-format cyclonedx > sbom.json
-
-# Run security audit
-cargo install cargo-audit
-cargo audit --json > audit-results.json
-
-# Build with FIPS mode
-cargo build --release --features fips-mode
+cargo install cargo-sbom cargo-cyclonedx
+./scripts/generate-sbom.sh
 ```
 
 ---
 
-## Phase 2: Operational Hardening
+## Phase 2: Enterprise Hardening (Library Components)
 
-| Item | Status | Notes |
-|------|--------|-------|
-| Air-gapped mode | ✅ Complete | Feature flag `airgap` disables all external calls |
-| mTLS configuration | ✅ Complete | `mtls` module with rustls backend |
-| Secret management (Vault) | ✅ Complete | `secrets` module with Vault/SOPS support |
-| RBAC implementation | ✅ Complete | See `auth_hardened.rs` |
-| Tamper-evident logs | ✅ Complete | Merkle tree audit chain in `audit_chain.rs` |
-| Vendored dependencies | ⏳ In Progress | `cargo vendor` directory pending |
+| Item | Library Status | CLI Integration |
+|------|----------------|-----------------|
+| Hardened Auth (Argon2id) | ✅ `auth_hardened.rs` | ❌ Not wired |
+| X.509 Certificate Validation | ✅ `CertificateValidator` | ❌ Not wired |
+| SIEM Export (CEF) | ✅ `export/cef.rs` | ❌ Not wired |
+| SIEM Export (JSON/ECS) | ✅ `export/json.rs` | ❌ Not wired |
+| SIEM Export (OCSF) | ✅ `export/ocsf.rs` | ❌ Not wired |
+| Prometheus Metrics | ✅ `metrics.rs` | ✅ `fractal serve` |
+| HTTP Server | ✅ `server.rs` | ✅ `fractal serve` |
+| LLM Provider Config | ✅ `llm_providers.rs` | ❌ Not wired |
+| Audit Trail (Hash Chain) | ✅ `audit.rs` | ✅ Used in TICE |
 
-### Secret Management Options
-1. HashiCorp Vault (recommended for enterprise)
-2. SOPS with age/GPG (for GitOps workflows)
-3. Kubernetes sealed-secrets (for K8s deployments)
+### What "Library Component" Means
+```rust
+// These are available for use:
+use fractal::{HardenedAuthProvider, CefExporter, MetricsRegistry};
+
+// But NOT automatically active in the CLI
+// Integrators must wire them into their application
+```
 
 ---
 
 ## Phase 3: Observability
 
-| Item | Status | Notes |
-|------|--------|-------|
-| Prometheus metrics | ✅ Complete | `/metrics` endpoint via metrics-exporter-prometheus |
-| Grafana dashboard | ✅ Complete | `deploy/grafana/fractal-dashboard.json` |
-| OpenTelemetry spans | ⏳ In Progress | Tracing module skeleton |
-| Alert rules | ✅ Complete | `deploy/prometheus/alerts.yaml` |
-
-### Metrics Exposed
-- `fractal_pain_intensity` - Nociception pain signal intensity
-- `fractal_thermal_utilization` - Thermoception heat levels
-- `fractal_containment_blocked_total` - Containment gate rejections
-- `fractal_auth_failures_total` - Authentication failures
-- `fractal_damage_accumulated` - System damage state
-- `fractal_consensus_agreement` - Orchestration consensus level
+| Item | Actual Status | Notes |
+|------|---------------|-------|
+| Prometheus metric types | ✅ Library code | Counter, Gauge, Histogram implemented |
+| Grafana dashboard JSON | ✅ Available | `deploy/grafana/fractal-dashboard.json` |
+| Prometheus alert rules | ✅ Available | `deploy/prometheus/alerts.yaml` |
+| HTTP metrics endpoint | ✅ Implemented | `fractal serve` exposes GET /metrics |
+| Health check endpoint | ✅ Implemented | GET /health for k8s probes |
+| Status API | ✅ Implemented | GET /api/v1/status |
+| OpenTelemetry | ❌ Not implemented | Planned |
 
 ---
 
 ## Phase 4: Documentation
 
-| Item | Status | Notes |
-|------|--------|-------|
-| OpenAPI spec | ⏳ In Progress | `docs/api/openapi.yaml` |
-| Threat model (STRIDE) | ✅ Complete | `docs/security/THREAT-MODEL.md` |
-| Architecture Decision Records | ✅ Complete | `docs/adr/` directory |
-| Incident response runbook | ✅ Complete | `docs/runbooks/incident-response.md` |
-| Deployment guide (classified) | ⏳ In Progress | `docs/deployment/classified-env.md` |
+| Item | Status | Location |
+|------|--------|----------|
+| Technical Overview | ✅ Complete | `docs/TECHNICAL_OVERVIEW.md` |
+| CISO Security Assessment | ✅ Complete | `docs/CISO_SECURITY_ASSESSMENT.md` |
+| Threat Model (STRIDE) | ✅ Complete | `docs/THREAT_MODEL.md` |
+| STIG Compliance Mapping | ✅ Complete | `docs/STIG_COMPLIANCE.md` |
+| Executive Summary | ✅ Complete | `docs/EXECUTIVE_SUMMARY.md` |
 
 ---
 
-## Phase 5: Delivery
+## Phase 5: Delivery Artifacts
 
 | Item | Status | Notes |
 |------|--------|-------|
-| Container signing (cosign) | ⏳ Pending | Requires sigstore account |
-| Reproducible builds | ✅ Complete | `rust-toolchain.toml` pinned |
-| Multi-arch support | ✅ Complete | amd64, arm64 via cross-compilation |
-| Offline bundle | ⏳ In Progress | `scripts/build-offline-bundle.sh` |
+| Dockerfile | ✅ Available | Multi-stage, non-root user |
+| Helm Chart | ✅ Available | `deploy/helm/fractal/` |
+| Demo Dashboard | ✅ Available | `demo/dashboard.html` (air-gap capable) |
+| Container signing | ❌ Not implemented | Planned |
+| Reproducible builds | ⚠️ Partial | Cargo.lock committed, no CI verification |
 
-### Build Verification
-```bash
-# Verify reproducible build
-./scripts/verify-reproducible.sh
+---
 
-# Build multi-arch images
-./scripts/build-multiarch.sh --platform linux/amd64,linux/arm64
+## What's Actually Working in the CLI
 
-# Create offline bundle
-./scripts/build-offline-bundle.sh --output fractal-offline.tar.gz
+The following subsystems are **actively used** in the current CLI:
+
+| Subsystem | CLI Command | Status |
+|-----------|-------------|--------|
+| HTTP Server | `fractal serve` | ✅ Working |
+| Nociception | `fractal test noci` | ✅ Working |
+| Thermoception | `fractal test thermo` | ✅ Working |
+| Containment | Library only | ⚠️ Not exposed |
+| Orchestration | Library only | ⚠️ Not exposed |
+| Voice Bridge (Claude) | `fractal voice` | ✅ Working |
+| TICE | `fractal tice` | ✅ Working |
+| Shepherd | `fractal shepherd` | ✅ Working |
+| Audit Trail | Internal | ✅ Working |
+
+### Server Endpoints (`fractal serve`)
+```
+GET  /health           - Liveness/readiness probe
+GET  /metrics          - Prometheus metrics
+GET  /api/v1/status    - System status JSON
+POST /api/v1/evaluate  - Safety evaluation (basic)
 ```
 
 ---
 
-## Human Decisions Required
+## Honest Assessment for Evaluators
 
-1. **Sigstore Account** - Need organizational sigstore account for container signing
-2. **Vault Configuration** - Production Vault URL and auth method to be determined
-3. **Certificate Authority** - CA for mTLS certificates in production
-4. **STIG Profile Selection** - Which STIG profile (RHEL 8, Container, etc.) is target
-5. **Classification Level** - Unclassified, CUI, Secret, TS/SCI deployment targets
+**Strengths:**
+- Novel proprioceptive approach to AI safety
+- Clean Rust codebase with good modular structure
+- Core algorithms implemented and tested
+- Enterprise security patterns available as library components
+- HTTP server with metrics/health/API endpoints
 
----
+**Gaps for Production:**
+- Enterprise hardening (auth, SIEM export) not wired into CLI
+- No mTLS module (would require rustls integration)
+- No secret management integration (Vault/SOPS)
+- No CI/CD pipeline for signing
 
-## External Dependencies
-
-| Dependency | Purpose | Mitigated |
-|------------|---------|-----------|
-| crates.io | Rust packages | Vendored for air-gap |
-| GitHub Actions | CI/CD | Self-hosted runner option |
-| Docker Hub | Base images | Internal registry mirror |
-| HashiCorp Vault | Secrets | Optional, can use SOPS |
-
----
-
-## Compliance Matrix
-
-| Framework | Status | Gap Analysis |
-|-----------|--------|--------------|
-| NIST 800-53 | Partial | See `docs/compliance/NIST-800-53.md` |
-| FedRAMP | Not Started | Requires ATO process |
-| CMMC Level 2 | Partial | CUI handling documented |
-| SOC 2 Type II | Not Applicable | Infrastructure requirement |
+**Recommendation:** Evaluate the core algorithms via CLI and `fractal serve`. Enterprise hardening features require integration work for production deployment.
 
 ---
 
 ## Contact
 
-For procurement inquiries: [Redacted - add appropriate contact]
-
-Last Updated: 2026-01-21
+For technical evaluation: engineering@fractal.ai

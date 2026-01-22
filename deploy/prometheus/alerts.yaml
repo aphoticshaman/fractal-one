@@ -1,0 +1,216 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# FRACTAL Prometheus Alerting Rules
+# ═══════════════════════════════════════════════════════════════════════════════
+# Alerts for proprioceptive telemetry anomalies
+# ═══════════════════════════════════════════════════════════════════════════════
+
+groups:
+  - name: fractal.nociception
+    rules:
+      - alert: FractalHighPainIntensity
+        expr: fractal_pain_intensity > 0.7
+        for: 1m
+        labels:
+          severity: warning
+          subsystem: nociception
+        annotations:
+          summary: "High pain intensity detected"
+          description: "Pain intensity is {{ $value | humanizePercentage }} (threshold: 70%)"
+          runbook_url: "https://docs.fractal.ai/runbooks/nociception#high-pain"
+
+      - alert: FractalCriticalPainIntensity
+        expr: fractal_pain_intensity > 0.9
+        for: 30s
+        labels:
+          severity: critical
+          subsystem: nociception
+        annotations:
+          summary: "Critical pain intensity - immediate attention required"
+          description: "Pain intensity is {{ $value | humanizePercentage }} (threshold: 90%)"
+          runbook_url: "https://docs.fractal.ai/runbooks/nociception#critical-pain"
+
+      - alert: FractalDamageAccumulation
+        expr: fractal_damage_total > 0.5
+        for: 2m
+        labels:
+          severity: warning
+          subsystem: nociception
+        annotations:
+          summary: "Accumulated damage exceeds safe threshold"
+          description: "Damage state is {{ $value | humanizePercentage }} (threshold: 50%)"
+
+      - alert: FractalPainEventSpike
+        expr: increase(fractal_pain_events_total[5m]) > 10
+        for: 0s
+        labels:
+          severity: warning
+          subsystem: nociception
+        annotations:
+          summary: "Spike in pain events detected"
+          description: "{{ $value }} pain events in the last 5 minutes"
+
+  - name: fractal.thermoception
+    rules:
+      - alert: FractalThermalWarning
+        expr: fractal_thermal_utilization > 0.85
+        for: 2m
+        labels:
+          severity: warning
+          subsystem: thermoception
+        annotations:
+          summary: "System approaching thermal limit"
+          description: "Thermal utilization is {{ $value | humanizePercentage }} (warning threshold: 85%)"
+
+      - alert: FractalThermalCritical
+        expr: fractal_thermal_utilization > 0.95
+        for: 30s
+        labels:
+          severity: critical
+          subsystem: thermoception
+        annotations:
+          summary: "System at thermal redline - load shedding required"
+          description: "Thermal utilization is {{ $value | humanizePercentage }} (critical threshold: 95%)"
+          runbook_url: "https://docs.fractal.ai/runbooks/thermoception#thermal-critical"
+
+      - alert: FractalThermalZoneHot
+        expr: fractal_thermal_zone_utilization > 0.9
+        for: 1m
+        labels:
+          severity: warning
+          subsystem: thermoception
+        annotations:
+          summary: "Thermal zone {{ $labels.zone }} overheating"
+          description: "Zone {{ $labels.zone }} at {{ $value | humanizePercentage }} utilization"
+
+  - name: fractal.containment
+    rules:
+      - alert: FractalHighThreatLevel
+        expr: fractal_threat_level >= 3
+        for: 0s
+        labels:
+          severity: critical
+          subsystem: containment
+        annotations:
+          summary: "High threat level detected"
+          description: "Threat level is {{ $value }} (3=High, 4=Critical)"
+          runbook_url: "https://docs.fractal.ai/runbooks/containment#high-threat"
+
+      - alert: FractalContainmentBlockSpike
+        expr: rate(fractal_containment_blocked_total[5m]) > 1
+        for: 1m
+        labels:
+          severity: warning
+          subsystem: containment
+        annotations:
+          summary: "Elevated rate of blocked requests"
+          description: "{{ $value | humanize }} requests/second being blocked"
+
+      - alert: FractalManipulationAttempt
+        expr: increase(fractal_manipulation_attempts_total[5m]) > 0
+        for: 0s
+        labels:
+          severity: critical
+          subsystem: containment
+        annotations:
+          summary: "Manipulation attempt detected"
+          description: "{{ $value }} manipulation attempts in the last 5 minutes"
+          runbook_url: "https://docs.fractal.ai/runbooks/containment#manipulation"
+
+  - name: fractal.orchestration
+    rules:
+      - alert: FractalLowConsensus
+        expr: fractal_consensus_agreement < 0.6
+        for: 2m
+        labels:
+          severity: warning
+          subsystem: orchestration
+        annotations:
+          summary: "Agent consensus below threshold"
+          description: "Consensus agreement at {{ $value | humanizePercentage }} (threshold: 60%)"
+
+      - alert: FractalConsensusFailed
+        expr: increase(fractal_consensus_failures_total[5m]) > 3
+        for: 0s
+        labels:
+          severity: warning
+          subsystem: orchestration
+        annotations:
+          summary: "Multiple consensus failures"
+          description: "{{ $value }} consensus failures in the last 5 minutes"
+
+      - alert: FractalSafetyVeto
+        expr: increase(fractal_safety_veto_total[5m]) > 0
+        for: 0s
+        labels:
+          severity: info
+          subsystem: orchestration
+        annotations:
+          summary: "Safety veto by beta agent"
+          description: "Beta agent vetoed {{ $value }} decisions in the last 5 minutes"
+
+  - name: fractal.authentication
+    rules:
+      - alert: FractalAuthFailureSpike
+        expr: rate(fractal_auth_failure_total[5m]) > 0.5
+        for: 2m
+        labels:
+          severity: warning
+          subsystem: authentication
+        annotations:
+          summary: "Elevated authentication failure rate"
+          description: "{{ $value | humanize }} auth failures/second"
+
+      - alert: FractalBruteForceAttempt
+        expr: increase(fractal_auth_failure_total[1m]) > 10
+        for: 0s
+        labels:
+          severity: critical
+          subsystem: authentication
+        annotations:
+          summary: "Possible brute force attack"
+          description: "{{ $value }} authentication failures in 1 minute"
+          runbook_url: "https://docs.fractal.ai/runbooks/auth#brute-force"
+
+      - alert: FractalSessionExhaustion
+        expr: fractal_active_sessions > 1000
+        for: 5m
+        labels:
+          severity: warning
+          subsystem: authentication
+        annotations:
+          summary: "High number of active sessions"
+          description: "{{ $value }} active sessions (soft limit: 1000)"
+
+  - name: fractal.system
+    rules:
+      - alert: FractalLowHealthScore
+        expr: fractal_health_score < 0.5
+        for: 2m
+        labels:
+          severity: warning
+          subsystem: system
+        annotations:
+          summary: "System health degraded"
+          description: "Health score is {{ $value | humanizePercentage }} (threshold: 50%)"
+
+      - alert: FractalCriticalHealthScore
+        expr: fractal_health_score < 0.3
+        for: 1m
+        labels:
+          severity: critical
+          subsystem: system
+        annotations:
+          summary: "System health critical"
+          description: "Health score is {{ $value | humanizePercentage }} (threshold: 30%)"
+          runbook_url: "https://docs.fractal.ai/runbooks/system#health-critical"
+
+      - alert: FractalProcessingStalled
+        expr: rate(fractal_cycles_total[5m]) == 0
+        for: 2m
+        labels:
+          severity: critical
+          subsystem: system
+        annotations:
+          summary: "Processing has stalled"
+          description: "No processing cycles in the last 5 minutes"
+          runbook_url: "https://docs.fractal.ai/runbooks/system#stalled"
